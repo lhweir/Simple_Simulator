@@ -121,7 +121,6 @@ Catch_4_Panel(Names=Names, PlotName="Catch_4Panel_Term", Mods2Plot_1 = c(1,2,3,4
 # Dot and line plots showing average catch over the time series for all scenarios
 plotCatch(Names, PlotName = "Catch_Barplots")
 
-
 # Can also plot individual cohort abundance and escapement trajectories
 # can give these functions 1 scenario, or multiple, but multiple gets messy fast
 # don't need to give legend names, but names are usually messy
