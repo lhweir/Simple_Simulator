@@ -1,5 +1,5 @@
 ####################################################
-###    Chinook MSE Simulator                      ##
+###       Basic Simulator Model                   ##
 ###       Kendra Holt & Brooke Davis              ##
 ####################################################
 
@@ -22,7 +22,7 @@ source(hFuncPath)
 source(sFuncPath)
 source(statsFuncPath)
 
-setwd("Case_1_ER")
+setwd("Case_1")
 
 # Create DataOut directory if it doesn't yet exist
 outputDir <- "DataOut"

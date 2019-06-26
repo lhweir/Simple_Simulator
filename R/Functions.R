@@ -657,7 +657,7 @@ Get.Recruitment <- function(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var
     # (note that smoltSurvRate is needed to convert units from smolts (used for smoltTarg)
     # to ocean age-1 recruits
     #age1Fish  <- smTarg * smSurvRate
-    age1Fish <- ifelse( Spawners[yy, ss] < BT_req , Spawners[yy,ss]*smPerFemBT*BTSexRatio*smSurvRate, smTarg * SmoltSurv)
+    age1Fish <- ifelse( Spawners[yy, ss] < BT_req , Spawners[yy,ss]*smPerFemBT*BTSexRatio*smSurvRate, smTarg * smSurvRate)
 
   } # end hatchery
 
