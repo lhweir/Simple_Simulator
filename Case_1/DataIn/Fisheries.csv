@@ -1,6 +1,0 @@
-FisheryID, Name, Region, Sector,Type,HarvCtrl,ER_Data_Type,ER_Type,Term_Stock
-1,Fishery1,1,All,PT,Effort,Base,Total,NA
-2,Fishery2,1,All,PT,Effort,Base,Total,NA
-3,Stock1_Term,NA,Term,TERM,Effort,Base,Total,Stock1
-4,Stock2_Term,NA,Term,TERM,Effort,Base,Total,Stock2
-5,Stock3_Term,NA,Term,TERM,Effort,Base,Total,Stock3
