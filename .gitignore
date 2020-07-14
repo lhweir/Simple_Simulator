@@ -8,7 +8,7 @@
 *.DU10/
 *.DU11/
 *.DU17/
-*.DU2/Figures/
-*.DU2/DataOut
+*.DU2\Figures\
+*.DU2\DataOut\
 *.pdf
 
