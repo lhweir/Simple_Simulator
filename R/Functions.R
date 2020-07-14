@@ -1,6 +1,7 @@
 #########################################################
 ##  Functions for Chinook MSE Simulator version 1      ##
 ##            Brooke Davis & Kendra Holt               ##
+##              Edited by Lauren Weir                  ##
 #########################################################
 
 # ========================================================================
@@ -8,6 +9,7 @@
 # ========================================================================
 # Run.CN.MSE.Sim ()        - main function that runs the simulation routine
 # Distribute.Abundance ()  - distributes coastwide abundance among regions for a given time period in a given year
+#                          - second distribute function for the one stock & region situation
 # Get.PT.Catch.Effort ()   - calculates catch, release mortality, and drop-off mortality for ISBM preterminal fisheries
 # Get.Term.Catch ()        - calculates catch, release mortality, and drop-off mortality for terminal fisheries
 # Get.Recruitment()        - takes escapement, returns age 1's (Natural, Hatchery, Enhanced)
@@ -39,12 +41,8 @@ Run.CN.MSE.Sim <- function(Blob){
   EscList <- list()
   SpawnList <- list()
   TermFishList <- list()
-  # PT relmort and dropoff (will only have this for AABM/Catch-controlled fisheries)
-  RelMortList <- list()
-  DropoffList <- list()
-  # For ER fisheries only have Incidental mortality, not explicit Release and dropoff mort
-  IncMortList <- list()
-  TermIncMortList <- list()
+  PTRatesList <- list()
+  TermRatesList <- list()
 
   # extract survival for each stock
   #** note SR_1 never gets used
@@ -66,7 +64,7 @@ Run.CN.MSE.Sim <- function(Blob){
 
     #Cohort -- starting abundance before distribution,
     #represents "new" fish to model that need to be distributed
-    # note Cohort is indexed by age (1-5), where N is indexed by adult age (2-MaxAge)
+    # note Cohort is indexed by age (1-5 or 6), where N is indexed by adult age (2 or 3-MaxAge)
     Cohort <- array(dim=c(NY, NS, NAges+1))
 
     #abundance N -- indexes by stock, year, period, region, adult ages age (ages 2-MaxAge indexed as 1-(MaxAge-1))
@@ -84,22 +82,14 @@ Run.CN.MSE.Sim <- function(Blob){
     ff_PT <- FisheryInfo$FisheryID[which(FisheryInfo$Type !="TERM")]
     # pre-terminal catch
     Catch <- array(dim=c( NY, NP, length(ff_PT), NS, NAges))
-
+    PT_Rates <- array(dim=c( NY, NP, length(ff_PT), NS, NAges))
+    
     # Keep terminal catch separate, since different indices
     Catch_Term <- array(dim=c(NY, NS, NAges))
     # also want to save by Terminal Fishery
     ff_Term <- FisheryInfo$FisheryID[which(FisheryInfo$Type=="TERM")]
     Term_Fisheries <- array(dim=c(NY, length(ff_Term)))
-
-    # for Effort-based will only have Incidental mortality (ER PT (non-AABM), all terminal)
-    IncMort <- array(dim=c(NY, NP, length(ff_PT), NS, NAges))
-    IncMort_Term <- array(dim=c(NY, NS, NAges))
-    # Releases (Pre-terminal AABM)
-    Release <- array(dim=c(NY, NP, length(ff_PT), NS, NAges))
-    # Release Mortality (Pre-terminal AABM)
-    RelMort <- array(dim=c(NY, NP, length(ff_PT), NS, NAges))
-    # DropOff Mortality (Pre-terminal AABM)
-    Dropoff <- array(dim=c(NY, NP, length(ff_PT), NS, NAges))
+    Term_Rates <- array(dim=c( NY, NP, length(ff_Term), NS, NAges))
 
     # Mature Fish
     Mature <- array(dim=c(NY, NR, NS, NAges))
@@ -109,7 +99,15 @@ Run.CN.MSE.Sim <- function(Blob){
     Spawners <- array(dim=c(NY, NS))
     # Recruits
     Recruits <- array(dim=c(NY, NS))
-
+    
+    # =================================================
+    # Simulate Maturation rates to use in the projections
+    # Function is located in helperFucntions file
+    # ==================================================
+    # Currently only set up for ocean type, may require adjustments for stream types
+    
+    MatRates <- simMatRates(Years,NS, Ages, Maturation)
+    
     #=================================================================
     ## Start annual loops here
     #======================================================================
@@ -167,7 +165,7 @@ Run.CN.MSE.Sim <- function(Blob){
                     # last period of last year, from the single region
                     # Cohort(this year,  ages 3,4,5) = Post_maturity_Abund(last year, ages 2,3,4) * survival(ages: 2:3, 3:4, 4:5)
                     # K.Holt note: if ocean-type, want to get survival for ages 2:3, 3:4, and 4:5
-                    Cohort[yy, ss, 3:MaxAge] <- N3[yy-1,NP,1,ss,1:3] * Surv[ss, 3:MaxAge]
+                    Cohort[yy, ss, 3:MaxAge] <- N3[yy-1,NP,1,ss,1:3] * Surv[ss, 3:MaxAge] 
                   } # end ocean if
 
                   if (as.character(StocksInfo$Ocean_Stream[which(StocksInfo$StockID==Stocks[ss])]) == "Stream") {
@@ -175,8 +173,9 @@ Run.CN.MSE.Sim <- function(Blob){
                     # Age 2 cohort abundance will come from Get.Recruitment function below
                     # Age 3+: apply survival to remaining at-sea abundance (after maturation occurs) in the
                     # last period of last year, from the single region
-                    # if stream-type, want to get survival for ages 1:2, 2:3, 3:4 -- survival by ocean age
-                    Cohort[yy, ss, 3:MaxAge] <- N3[yy-1,NP,1,ss,1:3] * Surv[ss,2:(MaxAge-1)]
+                    # if stream-type, want to get survival for ages 1:2, 2:3, 3:4, 4:5 -- survival by ocean age (actual ages: 2:3, 3:4, 4:5, 5:6)
+                    #Cohort[yy, ss, 3:MaxAge] <- N3[yy-1,NP,1,ss,1:3] * Surv[ss,2:(MaxAge-1)] Previously
+                    Cohort[yy, ss, 3:MaxAge] <- N3[yy-1,NP,1,ss,1:4] * Surv[ss,2:(MaxAge-1)] # this is need for Max Age 6 stream types
                   } # end stream if
 
               #=====================================================
@@ -207,8 +206,14 @@ Run.CN.MSE.Sim <- function(Blob){
           #===========================================================
           ## Distribute Cohort Abundandance Across Regions for Period 1
           #==============================================================
-          N[yy,pp,,,] <- Distribute.Abundance(Abund=Cohort[yy,,2:MaxAge], RDist, yy, pp, Stocks, Ages, NR, NS, Region_Tab)
-
+           #if there is only one stock, a different function needs to be used
+          if(length(NS) > 1){
+            N[yy,pp,,,] <- Distribute.Abundance(Abund=Cohort[yy,,2:MaxAge], RDist, yy, pp, Stocks, Ages, NR, NS, Region_Tab)
+            
+          } else if (length(NS) == 1) {
+            N[yy,pp,,,] <- Distribute.Abundance.OneStock(Abund=Cohort[yy,,2:MaxAge], RDist, yy, pp, Stocks, Ages, NR, NS, Region_Tab)
+          }
+          
         #============================================================================================
         ## If Period > 1, need to redistribute abundance from last period to regions
         #=============================================================================================
@@ -235,14 +240,14 @@ Run.CN.MSE.Sim <- function(Blob){
           ## If fishery is ISBM, calculate preterminal catch and incidental mortality
           # Also do this for initialization years for AABM fisheries, just to represent depletion without
           # being able to actually calculate AI's/TAC's etc.
-          PT_Catch<-Get.PT.Catch.Effort(Years, Stocks, Ages, yy, pp,region, ff, N, Base_ER, Base_ER_Landed, HRS, FisheryInfo)
-
+          PT_CatchOutput<-Get.PT.Catch.Effort(Years, Stocks, Ages, yy, pp, region, ff, N, Base_ER, HRS, StocksInfo)
+          PT_Catch <- PT_CatchOutput$Catch
+          
+          # Save the harvest rates used
+          PT_Rates[yy, pp, ff, , ] <- PT_CatchOutput$Rates
+          
           # Now pull individual values from PT_Catch object
-          Catch[yy, pp, ff, , ] <- round(PT_Catch$Catch)
-          Release[yy,pp,ff, , ] <- round(PT_Catch$Release)
-          RelMort[yy,pp,ff, , ] <- round(PT_Catch$RelMort)
-          Dropoff[yy,pp,ff, , ] <- round(PT_Catch$Dropoff)
-          IncMort[yy,pp,ff, , ] <- round(PT_Catch$IncMort)
+          Catch[yy, pp, ff, , ] <- round(PT_Catch)
 
         } # end of Preterminal fishery loop
 
@@ -258,29 +263,22 @@ Run.CN.MSE.Sim <- function(Blob){
               # Remove fishing over all fisheries in region (ff_in_rr)
               N1[ yy, pp, rr, ss, aa] <- N[yy, pp, rr, ss, aa] - sum(Catch[yy, pp, ff_in_rr, ss, aa], na.rm=T)
               # Remove incidental mortality from fisheries in region (ff_in_rr)
-              N2[ yy, pp, rr, ss, aa] <- N1[yy, pp, rr, ss, aa] - sum(IncMort[yy, pp, ff_in_rr, ss, aa], na.rm=T)
+              N2[ yy, pp, rr, ss, aa] <- N1[yy, pp, rr, ss, aa] # No longer removing incidental mortalities
             } # end Age loop
           } # end stock loop
         } # end region loop
 
-        #======================================================
+        #========================================
         ## Maturation
-        #======================================================
+        #========================================
         # Check which stocks mature in this period, if any
         ss_mature <-  StocksInfo$StockID[which(StocksInfo$Maturation_Period==pp)]
         for(ss in 1:NS){
           if(Stocks[ss] %in% ss_mature){
-            # which years do we have maturation rates for?
-            DatYrs <- unique(Maturation$Year[which(Maturation$StockID==as.character(Stocks[ss]))])
-            # Pull out most recent of years we have values for in data frame
-            Mat_Tab <- Maturation[which(Maturation$Year==max(DatYrs[DatYrs<=Years[yy]]) & Maturation$StockID==as.character(Stocks[ss])),]
-            # get randomized M vector for that stock
-            Means <- sapply( Ages, function(x) Mat_Tab$Maturation[which(Mat_Tab$Age==x)] )
-            SDs <- sapply( Ages, function(x) Mat_Tab$SD[which(Mat_Tab$Age==x)] )
-            MatRates <- Trunc.Norm(mean=Means, SD=SDs, min=0, max=1)
+            
             # for each region calc mature fish and remove from pop
             for(rr in 1:NR){
-              Mature[yy, rr, ss, ] <-  N2[yy, pp, rr ,ss, ] * MatRates
+              Mature[yy, rr, ss, ] <-  N2[yy, pp, rr ,ss, ] * MatRates$MatRate[MatRates$RY==Years[yy]]
               # Now remove these from population
               N3[yy, pp, rr, ss, ] <- N2[yy, pp, rr, ss,  ]   -  Mature[yy, rr,ss, ]
             } # end region loop
@@ -311,26 +309,29 @@ Run.CN.MSE.Sim <- function(Blob){
           Term_Catch <- list()
           for(ff in 1:length(ff_Stock)){
             # extract HR for age classes as vector
-            HR <- sapply ( Ages, function(x) TermHR[which(TermHR$FisheryID==ff_Stock[ff]), paste("HR_Age", x, sep="")])
-            HR_Landed <- sapply ( Ages, function(x) TermHR_Landed[which(TermHR_Landed$FisheryID==ff_Stock[ff]), paste("HR_Age", x, sep="")])
+            HR_means <- sapply ( Ages, function(x) TermHR[which(TermHR$FisheryID==ff_Stock[ff]), paste("HR_Age", x, sep="")])
+            HR_SDs <- sapply ( Ages, function(x) TermHR[which(TermHR$FisheryID==ff_Stock[ff]), paste("SD_Age", x, sep="")])
+           
             # Which years do we have Harvest rate scalars for?
             DatYrs <- HRS$Year[which(HRS$FisheryID==ff_Stock[ff])]
             # Get HRS from HRS file, most recent year
             HRScalar <- HRS$HRS[which(HRS$FisheryID==ff_Stock[ff]  & HRS$Year==max(DatYrs[DatYrs<=Years[yy]]))]
 
             # Get Catch and incidental mortality
-            Term_Catch[[ff]] <- Get.Term.Catch(HR, HR_Landed, HRScalar,yy,ss, ff=ff_Stock[ff], NP, Mature)
-
-            # also want to save catch for each fishery
+            Term_Catch[[ff]] <- Get.Term.Catch(HR_means,HR_SDs, HRScalar,yy, ss, ff=ff_Stock[ff], NP, Mature, StocksInfo=StocksInfo, Stocks)
+            #Term_Catch[[ff]] <- CatchOutput$Catch
+            #Save the harvest rates
+            Term_Rates[yy,pp,ff , , ] <- Term_Catch[[ff]]$Rates #CatchOutput$Rates
+              
+            # also want to save total term catch 
             Term_Fisheries[yy, which(ff_Term==ff_Stock[ff])] <- sum(Term_Catch[[ff]]$Catch)
           } # end ff_Stock Loop
 
           # Extract results and fill catch arrays
           Catch_Term[yy, ss , ] <- rowSums(sapply(Term_Catch, function(x) x$Catch))
-          IncMort_Term[yy,ss , ] <- rowSums(sapply(Term_Catch, function(x) x$IncMort))
 
         } else { # else if not terminal fishery for this stock
-          Catch_Term[yy, ss, ] <- IncMort_Term[yy,ss , ]  <-  0
+          Catch_Term[yy, ss, ] <-  0
           Term_Fisheries[yy, which(ff_Term==ff_Stock[ff])] <- 0
         } # end terminal fishery if for that stock
 
@@ -349,8 +350,16 @@ Run.CN.MSE.Sim <- function(Blob){
         }
 
         # Remove Terminal fishing mort from total run to get escapement
-         Escape[yy, ss, ] <- Total_Run - Catch_Term[yy,ss, ] -  IncMort_Term[yy, ss, ]
-
+        # Split this out for if we want to look at effects of Big Bar or not on escapement survival
+        # Zero means no effect
+        if(Opts$BigBar == 0){ 
+          Escape[yy, ss, ] <- Total_Run - Catch_Term[yy,ss, ] 
+        }
+        
+        if(Opts$BigBar != 0){ # decrease the escapement according to big bar impact
+          Escape[yy, ss, ] <- (Total_Run - Catch_Term[yy,ss, ]) * Data$BigBar$EscSurv[Data$BigBar$Year == Data$BigBar$Year[yy]]
+        }
+        
         # If initializing by Escapement, and in initialization years, manually fill in Spawners
         # From input data
         if(Initialization=="Escapement" & yy <= MaxAge){
@@ -385,10 +394,13 @@ Run.CN.MSE.Sim <- function(Blob){
             EV <- EVs$EV[which(EVs$StockID==as.character(Stocks[ss]) & EVs$Year==max(DatYrs[DatYrs<=Years[yy+1]]))]
           }# end EV if's
 
+           # Are depensatory effects needed?
+          ifelse(Opts$Depensatory_Effects == TRUE, Dep <- c("yes"), Dep <- c("no"))
+            
           # If ocean-type, age 1 recruitment is predicted for year yy+1:
           if (as.character(StocksInfo$Ocean_Stream[which(StocksInfo$StockID==Stocks[ss])]) == "Ocean") {
-            Cohort[yy+1, ss, 1] <- Get.Recruitment(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var=T, Spawners, Maturation,
-                                                   StocksInfo, Surv, Prod_Mults, CC_Mults, Smolts_Scenario) * EV
+            Cohort[yy+1, ss, 1] <- Get.Recruitment(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var=T, Spawners, MatRates,
+                                                   StocksInfo, Surv, Prod_Mults, CC_Mults, Smolts_Scenario, Dep) * EV # Just changing ocean type for now during testing
 
           # If stream-type, age 2 recruitment is predicted for year yy+2
           } else if (as.character(StocksInfo$Ocean_Stream[which(StocksInfo$StockID==Stocks[ss])]) == "Stream") {
@@ -397,8 +409,8 @@ Run.CN.MSE.Sim <- function(Blob){
             # Calculate recruitment to age 2 in year yy +2
             if (yy < (length(Years)-1)) {
               # currently not randomized -- using mean instead of S for survival
-              Cohort[yy+2, ss, 2] <- Get.Recruitment(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var=T, Spawners, Maturation,
-                                                     StocksInfo, Surv, Prod_Mults, CC_Mults, Smolts_Scenario) * EV
+              Cohort[yy+2, ss, 2] <- Get.Recruitment(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var=T, Spawners, MatRates,
+                                                     StocksInfo, Surv, Prod_Mults, CC_Mults, Smolts_Scenario, Dep) * EV
             }
           } # end stream-type else
         } # end if not final year -- if final year nothing needs to happen
@@ -420,11 +432,8 @@ Run.CN.MSE.Sim <- function(Blob){
     EscList[[sim]] <- Escape
     SpawnList[[sim]] <- Spawners
     TermFishList[[sim]] <- Term_Fisheries
-    RelMortList[[sim]] <- RelMort
-    DropoffList[[sim]] <- Dropoff
-    IncMortList[[sim]] <- IncMort
-    TermIncMortList[[sim]] <- IncMort_Term
-
+    PTRatesList[[sim]] <- PT_Rates
+    TermRatesList[[sim]] <- Term_Rates
 
   #================
   }  #end sim loop
@@ -443,12 +452,9 @@ Run.CN.MSE.Sim <- function(Blob){
   Outputs$Term_Catch <- CTList
   Outputs$Escape <- EscList
   Outputs$Spawners <- SpawnList
-  # Same terminal catch data, just summarized differently
   Outputs$Term_Fisheries <- TermFishList
-  Outputs$RelMort <- RelMortList
-  Outputs$Dropoff <- DropoffList
-  Outputs$IncMort <- IncMortList
-  Outputs$IncMort_Term <- TermIncMortList
+  Outputs$PT_Rates <- PTRatesList
+  Outputs$Term_Rates <- TermRatesList
 
   Outputs
 
@@ -489,10 +495,25 @@ Distribute.Abundance <- function (Abund, RDist, yy, pp, Stocks, Ages, NR, NS, Re
 } # end distribute.cohort function
 
 
+ Distribute.Abundance.OneStock <- function (Abund, RDist, yy, pp, Stocks, Ages, NR, NS, Region_Tab) {
+  
+  #Cohort is matrix with dimensions NS x NAges
+  #Initiate N_out array to output
+  N_out <- array(dim=c(NR, NS, length(Ages)))
+  
+  # Distribute cohort
+  for(ss in 1:NS) {
+    for(aa in 1:length(Ages)){
+      N_out[,ss,aa] <- Abund[aa]
+    } # end age loop
+  } # end stock loop
+  return(N_out)
+} # end distribute.cohort function
+
 ###########################################################
 #  Get.PT.Catch.Effort
 #######################################################
-# Purpose: Calculates catch, release mortality, and drop-off mortality for effort-controlled preterminal fisheries
+# Purpose: Calculates catch for effort-controlled preterminal fisheries
 # Arguments: Years = Vector of years being simulated
 #            Stocks = Vector of stock names
 #            Ages = Vector of ages (2:MaxAge)
@@ -507,7 +528,8 @@ Distribute.Abundance <- function (Abund, RDist, yy, pp, Stocks, Ages, NR, NS, Re
 #            HRS = harvest rate scalars to scale base ER for different scenarios
 #            FisheryInfo = Input data frame with Fishery details
 ################################################################
-Get.PT.Catch.Effort<-function(Years, Stocks, Ages, yy, pp, region, ff, N, Base_ER, Base_ER_Landed, HRS, FisheryInfo) {
+
+Get.PT.Catch.Effort<-function(Years, Stocks, Ages, yy, pp, region, ff, N, Base_ER, HRS, StocksInfo) {
 
   # Extract fishery havest rate scalar (HRS, or delta)
   # -- first, need to find closest lower year with HRS specified via input files
@@ -516,28 +538,39 @@ Get.PT.Catch.Effort<-function(Years, Stocks, Ages, yy, pp, region, ff, N, Base_E
   delta <- HRS$HRS[which(HRS$FisheryID==ff & HRS$Year==max(DatYrs[DatYrs<=Years[yy]]))]
 
   # extract matrix of ER values for all stocks X ages
-  ER <- as.matrix(Base_ER[which(Base_ER$Period==pp & Base_ER$FisheryID==ff & Base_ER$StockID %in% Stocks),
-                           which(names(Base_ER) %in% paste("ER_Age", Ages, sep=""))]  *  delta)
-
-  # also get ER for landed catch
-  ER_Landed <- as.matrix(Base_ER_Landed[which(Base_ER_Landed$Period==pp & Base_ER_Landed$FisheryID==ff &
-                                                Base_ER_Landed$StockID %in% Stocks),
-                                 which(names(Base_ER_Landed) %in% paste("ER_Age", Ages, sep=""))]  *  delta)
-
+  # get randomized M vector for that stock
+  # Have not checked that this works, also need to adpat the input file first
+  Means <- as.matrix(Base_ER[which(Base_ER$Period==pp & Base_ER$FisheryID==ff & Base_ER$StockID %in% Stocks),
+   which(names(Base_ER) %in% paste("ER_Age", Ages, sep=""))])
+ 
+  SDs <- as.matrix(Base_ER[which(Base_ER$Period==pp & Base_ER$FisheryID==ff & Base_ER$StockID %in% Stocks),
+   which(names(Base_ER) %in% paste("SD_Age", Ages, sep=""))])
+ 
+  
+  # Transforms means and sds into the shape parameters for the beta function
+  Shape1 <- Means^2*(((1-Means)/(SDs^2))-(1/Means))
+  Shape2 <- Shape1*(1/Means-1)
+  
+  if (as.character(StocksInfo$Ocean_Stream[which(StocksInfo$StockID==Stocks)]) == "Stream"){
+    nn<-length(Shape1)
+    HR<- 0
+    HR[2:nn] <- rbeta(length(Shape1[2:nn]),Shape1[2:nn], Shape2[2:nn])
+  }
+  
+  if (as.character(StocksInfo$Ocean_Stream[which(StocksInfo$StockID==Stocks)]) == "Ocean"){
+  
+    HR <- rbeta(length(Shape1),Shape1, Shape2)
+  }
+  
+  ER <- as.matrix(HR  *  delta) 
+  
   # Get total mortality
-  TotalMort_Mat <- N[yy,pp,region,,] * ER
-  # Get landed catch
-  Catch_Mat <-N[yy,pp,region,,] * ER_Landed
-  # Get Incidental Mortality
-  Inc_Mat <- TotalMort_Mat - Catch_Mat
+  Catch_Mat <- N[yy,pp,region,,] * ER
 
   # No longer have explicit releases, relmort, dropoff, but will leave structure to consistant with AI-based
   CatchValues <- list()
   CatchValues$Catch <- Catch_Mat
-  CatchValues$Release <- NA
-  CatchValues$RelMort <- NA
-  CatchValues$Dropoff <- NA
-  CatchValues$IncMort <- Inc_Mat
+  CatchValues$Rates <- ER
 
   return(CatchValues)
 
@@ -547,34 +580,52 @@ Get.PT.Catch.Effort<-function(Years, Stocks, Ages, yy, pp, region, ff, N, Base_E
 ###########################################################
 #  Get.Term.Catch
 #######################################################
-# Purpose: Calculates catch, release mortality, and drop-off mortality for stock-specific terminal fisheries
+# Purpose: Calculates catch for stock-specific terminal fisheries
 # Arguments:
 
 
 ################################################################
 
-Get.Term.Catch <-  function(HR, HR_Landed, HRScalar,yy,ss, ff=ff_Stock[ff], NP, Mature){
+ Get.Term.Catch <-  function(HR_means,HR_SDs, HRScalar,yy,ss, ff, NP, Mature, StocksInfo, Stocks){
+   #Add in uncertainty
+   # Transforms means and sds into the shape parameters for the beta function
+   Shape1t <- HR_means^2*(((1-HR_means)/(HR_SDs^2))-(1/HR_means))
+   Shape2t <- Shape1t*(1/HR_means-1)
+   
+   if (as.character(StocksInfo$Ocean_Stream[which(StocksInfo$StockID==Stocks[ss])]) == "Ocean"){
+   if (ff == 3){ HR <- rbeta(length(Shape1t),Shape1t, Shape2t) }
+   
+   if (ff == 4){
+     HR<- 0
+     HR[2:4] <- rbeta(length(Shape1t[2:4]),Shape1t[2:4], Shape2t[2:4])
+     } 
+   }
+   
+   if (as.character(StocksInfo$Ocean_Stream[which(StocksInfo$StockID==Stocks[ss])]) == "Stream"){
+     nn<-length(Shape1t)
+     HR<- 0
+     HR[2:nn] <- rbeta(length(Shape1t[2:nn]),Shape1t[2:nn], Shape2t[2:nn])
+   }
 
-  # Get catch simply by multiplying by harvest rates to mature summed across regions
-  HR_Tot <- HR*HRScalar
-  HR_Landed <- HR_Landed*HRScalar
-  # only works if more than one period
-  if(NP > 1){
-    Catch_Vec <- apply(Mature[yy, ,ss,], 2, sum) * HR_Landed
-    Total_Mort_Vec <- apply(Mature[yy, ,ss,], 2, sum) * HR_Tot
-  } else if(NP==1) {
-    Catch_Vec <- Mature[yy, ,ss,] * HR_Landed
-    Total_Mort_Vec <- Mature[yy, ,ss,] * HR_Tot
-  }
-
-  # Prepare outputs
-  CatchValues <- list()
-  CatchValues$Catch <- round(Catch_Vec)
-  CatchValues$IncMort <- round(Total_Mort_Vec - Catch_Vec)
-
-  return(CatchValues)
-}
-
+   
+   # Get catch simply by multiplying by harvest rates to mature summed across regions
+   HR_tot <- HR*HRScalar
+   
+   # only works if more than one period
+   if(NP > 1){
+     Catch_Vec <- apply(Mature[yy, ,ss,], 2, sum) * HR_tot
+     
+   } else if(NP==1) {
+     Catch_Vec <- Mature[yy, ,ss,] * HR_tot
+   }
+   
+   # Prepare outputs
+   CatchValues <- list()
+   CatchValues$Catch <- round(Catch_Vec)
+   CatchValues$Rates <- HR_tot
+   
+   return(CatchValues)
+ }
 
 
 ###########################################################
@@ -586,8 +637,8 @@ Get.Term.Catch <-  function(HR, HR_Landed, HRScalar,yy,ss, ff=ff_Stock[ff], NP, 
 
 ################################################################
 
-Get.Recruitment <- function(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var, Spawners, Maturation, StocksInfo, Surv,
-                             Prod_Mults, CC_Mults, Smolts_Scenario){
+Get.Recruitment <- function(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var, Spawners, MatRates, StocksInfo, Surv,
+                             Prod_Mults, CC_Mults, Smolts_Scenario, Dep){
   #~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Case 1: Natural stock
   #~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -598,6 +649,12 @@ Get.Recruitment <- function(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var
       b <- StocksInfo$Ricker_B[which(StocksInfo$StockID==Stocks[ss])] / CC_Mults$Mult[which(CC_Mults$Year == Years[yy])]
       # calculate recruitment
       R <- a*Spawners[yy,ss] * exp(-b*Spawners[yy,ss])
+    
+     # Add in Depensatory effect if wanted
+    if (Dep == "yes"){
+      R <- (Spawners[yy,ss]/(Spawners[yy,ss]+1000))*R
+    }
+    
     # Add Variability
     if(Var==T){
       # get process error (precision) from StockInfo file
@@ -606,20 +663,15 @@ Get.Recruitment <- function(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var
       # Draw random variability
       E_R <- rnorm(1, 0, SD_R)
       # Multiply Recruitment by this value
-      R <- R*exp(E_R)
+      R <- R*exp(E_R-(SD_R^2)/2)
     }
     # Convert to age 1's
-    # get maturation rates for most recent year -- allows for both annual and one mat rate
-    DatYrs <- unique(Maturation$Year[which(Maturation$StockID==as.character(Stocks[ss]))])
-    Mat_Tab <- Maturation[which(Maturation$Year==max(DatYrs[DatYrs<=Years[yy]])),]
-    # get M vector for that stock, ages included in this sim
-    M <- c( Mat_Tab$Maturation[which(Mat_Tab$StockID==as.character(Stocks[ss]) & Mat_Tab$Age %in% Ages)])
-
+      
     # get survival rate
     # Survival rate depends if stream or ocean type
     Stock_Type <- StocksInfo$Ocean_Stream[which(StocksInfo$StockID==Stocks[ss])]
 
-    Age1Surv <- Get.Age1.Surv(S=Surv[ss,2:MaxAge] , M, MaxAge, Stock_Type)
+    Age1Surv <- Get.Age1.Surv(S=Surv[ss,2:MaxAge] , MatTab=MatRates , MaxAge, Stock_Type, Byr=Years[yy])
 
     age1Fish <- R / Age1Surv
 

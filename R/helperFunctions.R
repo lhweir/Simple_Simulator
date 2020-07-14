@@ -36,16 +36,69 @@ Trunc.Norm <- function(mean, SD, min=NA, max=NA){
   xx
 }
 
+Trunc.Norm.redraw <- function(mean, SD, min=0, max=1){
+  repeat {
+    # do something
+    xx <- rnorm(length(mean), mean, SD)
+    
+    # exit if the condition is met
+    if (xx >= min & xx <= max) break
+  }
+  return(xx)
+}
+
+#################################################
+## Set Up Maturation rates for the simulation ###
+#################################################
+
+
+simMatRates <- function(Years,NS, Ages, Maturation){
+  
+  MatRates <- data.frame(BY = numeric(), RY = numeric(), Age = numeric(), MatRate = numeric())
+  
+  RY.Use <- seq(from=Years[1], to=Years[length(Years)]+max(Ages),by=1)
+  
+  for (yy in 1:length(RY.Use)){
+    
+    for (aa in 1:c(max(Ages)-1)){
+      
+      Mean <- Maturation$Maturation[aa]
+      SD <- Maturation$SD[aa]
+      
+      Shape1m <- Mean^2*(((1-Mean)/(SD^2))-(1/Mean))
+      Shape2m <- Shape1m*(1/Mean-1)
+      
+      if (SD != 0){
+        matr <- rbeta(length(Shape1m),Shape1m, Shape2m)
+      }
+      
+      if (Mean==1 & SD == 0){
+        matr <- 1
+      }
+      
+      NewRow <- data.frame(BY = c(RY.Use[yy]-Ages[aa]), RY = RY.Use[yy], Age = Ages[aa], MatRate = matr)
+      
+      MatRates <- rbind(MatRates,NewRow)
+    }
+  }
+  
+  return(MatRates)
+  
+}
+
 
 #####################
 ##  Get.Age1.Surv  ##
 #####################
 
 # Given survival and maturation, calc age 1 to adult
-Get.Age1.Surv <- function(S, M, MaxAge, Stock_Type){
+Get.Age1.Surv <- function(S, MatTab, MaxAge, Stock_Type, Byr){
+  
+  M <- MatTab$MatRate[MatTab$BY== Byr]
+  
   # S is vector of survival S_12, S_23, S_34, S_45
   # M is vector of Maturations starting at age 2 -- M_2, M_3, M_4, M_5
-
+  
   if(Stock_Type=="Ocean"){
     SEQ <- NULL
     SEQ[1] <- S[1]
