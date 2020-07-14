@@ -3,7 +3,7 @@
 *.RData
 *.Ruserdata
 *.rds
-*.DU8/
+*.DU8\
 *.DU9/
 *.DU10/
 *.DU11/
