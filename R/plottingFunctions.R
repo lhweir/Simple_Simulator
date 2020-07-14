@@ -8,12 +8,15 @@
 # ================================================================================================
 # CohortPlots ()              - plots cohort abundance trajectories at age and by stock fr one or more scenarios  
 # EscapePlots ()              - plots escapement trajectories by stock for one or more scenarios
+# EscapePlots_4 ()            - plots escapement trajectories by stock for one or more alpha scenarios
 # Escape_4_Panel ()           - plots escapement trajectories across scenarios
 # PlotEscapeChange()          - dot and line plots showing the ratio of change in escapement (future:recent)
 # PlotCatch()                 - dot and line plots showing average Pre-terminal, Terminal, and Total catch (averaged over all years) 
 # checkNSims ()               - boxplots to check number of simulation replicates needed to get stable results
 # Catch_4_Panel()             - plots catch over time, across scenarios
 # AI_4_Panel()                - plots AABM abundance index (AI) over time, across scenarios
+# Escape_ByFishing            - Plots escapement trajectories for the 2 productivity values and depensatory effects by each fishing scenario
+# Escape_4_Panel_2            - Plots escapement trajectories for the 2 productivity values and depensatory effects
 # ==================================================================================================
 
 
@@ -23,7 +26,7 @@
 #######################################################
 # Purpose: Plots cohort abundance trajectory at age and by stock for one or more scenarios 
 # Arguments: Names = names of scenarios to be plotted; each name must have an rds file with that name saved in DataOut folder
-#           PlotName = name that will be used when saving plots as a pdf file in Figures folder             
+#           PlotName = name that will be used when saving plots as a pdf file in Figures folder
 ################################################################
 
 CohortPlots <- function(Names, PlotName, Legend_Names=NA){
@@ -134,9 +137,10 @@ CohortPlots <- function(Names, PlotName, Legend_Names=NA){
 #            PlotName = name that will be used when saving plots as a pdf file in Figures folder 
 #            LeadIn = Indicates whether lead-in (pre-initiaization) escapements should be plotted (True or False)
 #            Smax = Whether or not to add Smax to time-series
+#            nr = number of rows and nc = number of columns
 ################################################################
 
-EscapePlots <- function(Names, PlotName, LeadIn = T, Legend_Names=NA){
+EscapePlots <- function(Names, PlotName, LeadIn = T, Legend_Names=NA, nr, nc){
   
   # want to extract table of median change in escapment over 10 years (2016 to 2025) and 20 years (2016 to 2035)
   # also save all blobs
@@ -171,8 +175,509 @@ EscapePlots <- function(Names, PlotName, LeadIn = T, Legend_Names=NA){
   Opts <- Blobs[[1]]$Options
   Data <- Blobs[[1]]$Data
   
+  #layout(matrix(1:4, nrow = 2, byrow =T))
+  png(paste("Figures/", PlotName ,".png", sep=""), width=8, height = 8, units="in", res=500)
+  par(mfrow=c(nr,nc), oma=c(2,2,2,1), mar=c(2,2,2,1))
+  
+  for(ss in 1:length(Data$Stocks)){
+    
+    MyMean <- list()
+    MySD <- list()
+    # first store all model data so can get ylims
+    for(mm in 1:length(Blobs)){
+      StockDat <- lapply(Escape[[mm]], "[", ,ss , ) 
+      MyDat <- lapply(1:length(StockDat), function(x) apply(StockDat[[x]], 1, sum) )
+      MyMean[[mm]] <-  sapply(1:Data$NY, function(x) mean(sapply(MyDat, "[", x),na.rm=TRUE ))
+      MySD[[mm]] <- sapply(1:Data$NY, function(x) sd(sapply(MyDat, "[", x), na.rm=TRUE  ))
+    } # end mod loop
+    # remove initialization years if applicable
+    if(Opts$Initialization == "Escapement"){
+      Years_To_Plot <- Opts$Years[-(1:Data$MaxAge)]
+      MyMean <- lapply(MyMean, "[", which(Opts$Years %in% Years_To_Plot))
+      MySD <- lapply(MySD, "[", which(Opts$Years %in% Years_To_Plot))
+    } else {
+      Years_To_Plot <- Opts$Years
+    }
+    
+    # Get ylims
+    if(Opts$nSims >1 ){
+      if(LeadIn ==F){
+        ylims <- c( 0, max(c( unlist(MyMean) + unlist(MySD) )))
+      } else {
+        Edat <- Esc_LeadIn[which(as.character(Esc_LeadIn$StockID)==as.character(Data$Stocks[ss])),]
+        esc2019<-Edat[Edat$Year==2019,]
+        Edat <- Edat[-dim(Edat)[1],]
+        ylims <- c( 0 , max(c( unlist(MyMean) + unlist(MySD), na.omit(Edat$Escape) )))
+      }
+    } else {
+      ylims <-  c( min(c( unlist(MyMean) )), max(c( unlist(MyMean) )))
+    }  
+    # get escapament init data
+    Edat_Init <- Data$Escapement[which(Data$Escapement$StockID==Data$Stocks[ss]),]
+    # Plot
+    if(LeadIn==T){
+      plot(Edat$Year, Edat$Escape, col="darkgrey", type="l", ylim=ylims, xlim=c(min(Edat$Year), 
+                                                                                max(Opts$Years)), lwd=2, cex.lab=1.15, cex.axis=1.15)
+      # now add initialization data
+      lines(Edat_Init$Year, Edat_Init$Abundance, col="black", lwd=2)
+      
+      # now add 2019 escapement
+      #points(esc2019$Year,esc2019$Escape, pch=16, col="red")
+      
+    } else {
+      plot(Edat_Init$Year, Edat_Init$Abundance, col="black", type="l", ylim=ylims, lwd=2, 
+           xlim=c(min(Opts$Years), max(Opts$Years)))
+    }
+    # Now add model projections
+    lines(Years_To_Plot, MyMean[[1]], col=cols[1], type="l", lwd=2.5)
+    polygon(y=c(MyMean[[1]] - MySD[[1]], rev(MyMean[[1]] + MySD[[1]])), 
+            x=c(Years_To_Plot, rev(Years_To_Plot)), col=paste(cols[1], 45, sep=""), border=cols[1])
+    
+    if(length(Blobs) >= 2){
+      for(mm in 2:length(Blobs)){
+        lines(Years_To_Plot, MyMean[[mm]], col=cols[mm-1], lwd=2.5)
+        # end mods loop
+        # Add tranparent error bars
+        polygon(y=c(MyMean[[mm]] - MySD[[mm]], rev(MyMean[[mm]] + MySD[[mm]])), 
+                x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(cols[mm-1], 50, sep=""), border=cols[mm-1])
+      } # end mod loop
+    }
+    # label stock
+    mtext(side=3, text=Data$Stocks[ss])
+    # if last on page do overall labels
+    mtext(side=1, text="Year", outer=T, line=0.5)
+    mtext(side=2, text = "Escapement", outer=T, line=0.5)
+    #if(ss %% 4 == 0){
+    #  mtext(side=1, text="Year", outer=T, line=0.5)
+    #  mtext(side=2, text = "Escapement", outer=T, line=0.5)
+      #mtext(side=3, text="Escapement and Targets", outer=T, line=0.5)
+    #  if(length(Blobs) >= 2){
+    #    legend("topright", fill=c("black", cols[1:(length(Blobs)-1)]), legend=Legend_Names)
+    #  } # and more than one model if
+    #} # end final plot of page if
+    
+  } # end Stock loop
+  dev.off()
+} # End Escape Plot function
+
+EscapePlots.Quant <- function(Names, PlotName, LeadIn = T, Legend_Names=NA, nr, nc){
+  
+  # want to extract table of median change in escapment over 10 years (2016 to 2025) and 20 years (2016 to 2035)
+  # also save all blobs
+  Blobs <- list()
+  Escape <- list()
+  for(mm in 1:length(Names)){
+    Blobs[[mm]] <- readRDS(paste("DataOut/", Names[mm], ".rds", sep=""))
+    Escape[[mm]] <- Blobs[[mm]]$Sims$Escape
+  }
+  
+  
+  #Colors -- need to plot less than 7 or not enough colors
+  cols <- c("#0000ff", "#b22222", "#7E3FCC", "#006400", "#FFC725", "#808080", "#EF29E4")
+  TGrey <- "#80808050"
+  
+  # if legend names given, use these, otherwise use scenario names
+  if(is.na(Legend_Names[1])){
+    Legend_Names <- Names
+  }
+  
+  Escape <- AbundDat <- list()
+  for(mm in 1:length(Blobs)){
+    Escape[[mm]] <- Blobs[[mm]]$Sims$Escape
+  }
+  
+  # also read in "leadin" escapement data
+  if(LeadIn == T){
+    Esc_LeadIn <- read.csv("DataIn/Escape_LeadIn.csv")
+  }
+  
+  # Get require info from first blob, assume they are the same
+  Opts <- Blobs[[1]]$Options
+  Data <- Blobs[[1]]$Data
+  
+  #layout(matrix(1:4, nrow = 2, byrow =T))
+  png(paste("Figures/", PlotName ,".png", sep=""), width=8, height = 8, units="in", res=500)
+  par(mfrow=c(nr,nc), oma=c(2,2,2,1), mar=c(2,2,2,1))
+  
+  for(ss in 1:length(Data$Stocks)){
+    
+    MyMed <- list()
+    MyQT.L <- list()
+    MyQT.H <- list()
+    MyQT.L5 <- list()
+    MyQT.H5 <- list()
+    # first store all model data so can get ylims
+    for(mm in 1:length(Blobs)){
+      StockDat <- lapply(Escape[[mm]], "[", ,ss , ) 
+      MyDat <- lapply(1:length(StockDat), function(x) apply(StockDat[[x]], 1, sum) )
+      MyMed[[mm]] <-  sapply(1:Data$NY, function(x) median(sapply(MyDat, "[", x),na.rm=TRUE ))
+      MyQT.L[[mm]] <- sapply(1:Data$NY, function(x) quantile(sapply(MyDat, "[", x), probs=c(0.025),  na.rm=TRUE  ))
+      MyQT.H[[mm]] <- sapply(1:Data$NY, function(x) quantile(sapply(MyDat, "[", x), probs=c(0.975), na.rm=TRUE  ))
+      MyQT.L5[[mm]] <- sapply(1:Data$NY, function(x) quantile(sapply(MyDat, "[", x), probs=c(0.75),  na.rm=TRUE  ))
+      MyQT.H5[[mm]] <- sapply(1:Data$NY, function(x) quantile(sapply(MyDat, "[", x), probs=c(0.25), na.rm=TRUE  ))
+    } # end mod loop
+    # remove initialization years if applicable
+    if(Opts$Initialization == "Escapement"){
+      Years_To_Plot <- Opts$Years[-(1:Data$MaxAge)]
+      MyMed <- lapply(MyMed, "[", which(Opts$Years %in% Years_To_Plot))
+      MyQT.L <- lapply(MyQT.L, "[", which(Opts$Years %in% Years_To_Plot))
+      MyQT.H <- lapply(MyQT.H, "[", which(Opts$Years %in% Years_To_Plot))
+      MyQT.L5 <- lapply(MyQT.L5, "[", which(Opts$Years %in% Years_To_Plot))
+      MyQT.H5 <- lapply(MyQT.H5, "[", which(Opts$Years %in% Years_To_Plot))
+    } else {
+      Years_To_Plot <- Opts$Years
+    }
+    
+    # Get ylims
+    if(Opts$nSims >1 ){
+      if(LeadIn ==F){
+        ylims <- c( 0, max(c( unlist(MyMed) + unlist(MyQT.H) )))
+      } else {
+        Edat <- Esc_LeadIn[which(as.character(Esc_LeadIn$StockID)==as.character(Data$Stocks[ss])),]
+        esc2019<-Edat[Edat$Year==2019,]
+        Edat <- Edat[-dim(Edat)[1],]
+        ylims <- c( 0 , max(c( unlist(MyMed) + unlist(MyQT.H), na.omit(Edat$Escape) )))
+      }
+    } else {
+      ylims <-  c( min(c( unlist(MyMed) )), max(c( unlist(MyMed) )))
+    }  
+    # get escapament init data
+    Edat_Init <- Data$Escapement[which(Data$Escapement$StockID==Data$Stocks[ss]),]
+    # Plot
+    if(LeadIn==T){
+      plot(Edat$Year, Edat$Escape, col="darkgrey", type="l", ylim=ylims, xlim=c(min(Edat$Year), 
+                                                                                max(Opts$Years)), lwd=2, cex.lab=1.15, cex.axis=1.15)
+      # now add initialization data
+      lines(Edat_Init$Year, Edat_Init$Abundance, col="black", lwd=2)
+      
+      # now add 2019 escapement
+      #points(esc2019$Year,esc2019$Escape, pch=16, col="red")
+      
+    } else {
+      plot(Edat_Init$Year, Edat_Init$Abundance, col="black", type="l", ylim=ylims, lwd=2, 
+           xlim=c(min(Opts$Years), max(Opts$Years)))
+    }
+    # Now add model projections
+   
+    polygon(y=c(MyQT.L[[1]], rev(MyQT.H[[1]])), 
+            x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(cols[1], 25, sep=""), border=paste(cols[1], 25, sep="")) #col= "grey95", border="darkgrey"
+    
+    polygon(y=c(MyQT.L5[[1]], rev(MyQT.H5[[1]])), 
+            x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(cols[1], 45, sep=""), border=paste(cols[1], 45, sep="")) #col= "grey85",  border="darkgrey"
+    
+    lines(Years_To_Plot, MyMed[[1]], col=cols[1], type="l", lwd=2.5)
+    
+    
+    if(length(Blobs) >= 2){
+      for(mm in 2:length(Blobs)){
+        lines(Years_To_Plot, MyMean[[mm]], col=cols[mm-1], lwd=2.5)
+        # end mods loop
+        # Add tranparent error bars
+        polygon(y=c(MyMean[[mm]] - MySD[[mm]], rev(MyMean[[mm]] + MySD[[mm]])), 
+                x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(cols[mm-1], 50, sep=""), border=cols[mm-1])
+      } # end mod loop
+    }
+    # label stock
+    mtext(side=3, text=Data$Stocks[ss], cex=1.15)
+    # if last on page do overall labels
+    mtext(side=1, text="Year", outer=T, line=0.5,  cex=1.15)
+    mtext(side=2, text = "Escapement", outer=T, line=0.5,  cex=1.15)
+    #if(ss %% 4 == 0){
+    #  mtext(side=1, text="Year", outer=T, line=0.5)
+    #  mtext(side=2, text = "Escapement", outer=T, line=0.5)
+    #mtext(side=3, text="Escapement and Targets", outer=T, line=0.5)
+    #  if(length(Blobs) >= 2){
+    #    legend("topright", fill=c("black", cols[1:(length(Blobs)-1)]), legend=Legend_Names)
+    #  } # and more than one model if
+    #} # end final plot of page if
+    
+  } # end Stock loop
+  dev.off()
+} # End Escape Plot function
+
+###########################################################
+#  EscapePlots_4
+#######################################################
+# Purpose: Plots escapement trajectory by stock for one or more alpha scenarios 
+#             (note: if using > 1 scenario, escapement trajectories for each scnenario will be shown in the same plot) 
+# Arguments: Names = names of scenarios to be plotted; each name must have an rds file with that name saved in DataOut folder
+#            PlotName = name that will be used when saving plots as a pdf file in Figures folder 
+#            LeadIn = Indicates whether lead-in (pre-initiaization) escapements should be plotted (True or False)
+#            alpha = alpha values for teh different plots
+#            nr = number of rows and nc = number of columns
+################################################################
+
+EscapePlots_4 <- function(Names, PlotName, alpha, Legend_Names=NA, nr, nc){
+  
+  # want to extract table of median change in escapment over 10 years (2016 to 2025) and 20 years (2016 to 2035)
+  # also save all blobs
+  Blobs <- list()
+  Escape <- list()
+  for(mm in 1:length(Names)){
+    Blobs[[mm]] <- readRDS(paste("DataOut/", Names[mm], ".rds", sep=""))
+    Escape[[mm]] <- Blobs[[mm]]$Sims$Escape
+  }
+  
+  
+  #Colors -- need to plot less than 7 or not enough colors
+  cols <- c("#0000ff", "#b22222", "#7E3FCC", "#006400", "#FFC725", "#808080", "#EF29E4")
+  TGrey <- "#80808050"
+  
+  # if legend names given, use these, otherwise use scenario names
+  if(is.na(Legend_Names[1])){
+    Legend_Names <- Names
+  }
+  
+  Escape <- AbundDat <- list()
+  for(mm in 1:length(Blobs)){
+    Escape[[mm]] <- Blobs[[mm]]$Sims$Escape
+  }
+  
+  # also read in "leadin" escapement data
+  
+    Esc_LeadIn <- read.csv("DataIn/Escape_LeadIn.csv")
+  
+  
+  # Get require info from first blob, assume they are the same
+  Opts <- Blobs[[1]]$Options
+  Data <- Blobs[[1]]$Data
+  
+  layout(matrix(1:4, nrow = 2, byrow =T))
+  png(filename=paste("Figures/", PlotName ,".png", sep=""), width=11, height=8, units="in", res=800)
+  par(mfrow=c(nr,nc), oma=c(2,2,2,1), mar=c(2,2,2,1))
+  
+  for(ss in 1:length(Data$Stocks)){
+    
+    MyMean <- list()
+    MySD <- list()
+
+    # first store all model data so can get ylims
+    for(mm in 1:length(Blobs)){
+      StockDat <- lapply(Escape[[mm]], "[", ,ss , ) 
+      MyDat <- lapply(1:length(StockDat), function(x) apply(StockDat[[x]], 1, sum) )
+      MyMean[[mm]] <-  sapply(1:Data$NY, function(x) mean(sapply(MyDat, "[", x),na.rm=TRUE ))
+      MySD[[mm]] <- sapply(1:Data$NY, function(x) sd(sapply(MyDat, "[", x),  na.rm=TRUE  ))
+  
+    } # end mod loop
+    # remove initialization years if applicable
+    if(Opts$Initialization == "Escapement"){
+      Years_To_Plot <- Opts$Years[-(1:Data$MaxAge)]
+      MyMean <- lapply(MyMean, "[", which(Opts$Years %in% Years_To_Plot))
+      MySD <- lapply(MySD, "[", which(Opts$Years %in% Years_To_Plot))
+    } else {
+      Years_To_Plot <- Opts$Years
+    }
+    
+    # Get ylims
+    if(Opts$nSims >1 ){
+        Edat <- Esc_LeadIn[which(as.character(Esc_LeadIn$StockID)==as.character(Data$Stocks[ss])),]
+        esc2019<-Edat[Edat$Year==2019,]
+        Edat <- Edat[-dim(Edat)[1],]
+        ylims <- c( 0 , max(c( unlist(MyMean) + unlist(MySD), na.omit(Edat$Escape) )))
+      }
+     else {
+      ylims <-  c( min(c( unlist(MyMean) )), max(c( unlist(MyMean) )))
+    }  
+    # get escapament init data
+    Edat_Init <- Data$Escapement[which(Data$Escapement$StockID==Data$Stocks[ss]),]
+    # Plot
+    
+    for(mm in 1:length(Blobs)){
+      
+      plot(Edat$Year, Edat$Escape, col="darkgrey", type="l", ylim=ylims, xlim=c(min(Edat$Year), 
+                                                                                max(Opts$Years)), lwd=2)
+      # now add initialization data
+      lines(Edat_Init$Year, Edat_Init$Abundance, col="black", lwd=2)
+      
+      # now add 2019 escapement
+      points(esc2019$Year,esc2019$Escape, pch=16, col="red")
+      
+      lines(Years_To_Plot, MyMean[[mm]], col=cols[mm], lwd=2.5)
+      # end mods loop
+      # Add tranparent error bars
+      polygon(y=c(MyMean[[mm]] - MySD[[mm]], rev(MyMean[[mm]] + MySD[[mm]])), 
+              x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(cols[mm], 50, sep=""), border=cols[mm])
+      mtext(side=3, text=paste0(alpha[mm],"% reduction in HM Alpha"))
+    }
+    # label stock
+    title(main=  Data$Stocks[ss],outer=TRUE,cex.main=1.5)
+    #title(main=  paste0(alpha,"% reduction in HM Alpha"),outer=TRUE,cex.main=0.9, line=-.75)
+    # if last on page do overall labels
+    mtext(side=1, text="Year", outer=T, line=0.5)
+    mtext(side=2, text = "Escapement", outer=T, line=0.5)
+    #if(ss %% 4 == 0){
+    #  mtext(side=1, text="Year", outer=T, line=0.5)
+    #  mtext(side=2, text = "Escapement", outer=T, line=0.5)
+    #mtext(side=3, text="Escapement and Targets", outer=T, line=0.5)
+    #  if(length(Blobs) >= 2){
+    #    legend("topright", fill=c("black", cols[1:(length(Blobs)-1)]), legend=Legend_Names)
+    #  } # and more than one model if
+    #} # end final plot of page if
+
+  } # end Stock loop
+  dev.off()
+} # End Escape Plot function
+
+EscapePlots_4Quant <- function(Names, PlotName, alpha, Legend_Names=NA, nr, nc){
+  
+  # want to extract table of median change in escapment over 10 years (2016 to 2025) and 20 years (2016 to 2035)
+  # also save all blobs
+  Blobs <- list()
+  Escape <- list()
+  for(mm in 1:length(Names)){
+    Blobs[[mm]] <- readRDS(paste("DataOut/", Names[mm], ".rds", sep=""))
+    Escape[[mm]] <- Blobs[[mm]]$Sims$Escape
+  }
+  
+  
+  #Colors -- need to plot less than 7 or not enough colors
+  cols <- c("#0000ff", "#b22222", "#7E3FCC", "#006400", "#FFC725", "#808080", "#EF29E4")
+  TGrey <- "#80808050"
+  
+  # if legend names given, use these, otherwise use scenario names
+  if(is.na(Legend_Names[1])){
+    Legend_Names <- Names
+  }
+  
+  Escape <- AbundDat <- list()
+  for(mm in 1:length(Blobs)){
+    Escape[[mm]] <- Blobs[[mm]]$Sims$Escape
+  }
+  
+  # also read in "leadin" escapement data
+  
+  Esc_LeadIn <- read.csv("DataIn/Escape_LeadIn.csv")
+  
+  
+  # Get require info from first blob, assume they are the same
+  Opts <- Blobs[[1]]$Options
+  Data <- Blobs[[1]]$Data
+  
+  layout(matrix(1:4, nrow = 2, byrow =T))
+  png(filename=paste("Figures/", PlotName ,".png", sep=""), width=11, height=8, units="in", res=500)
+  par(mfrow=c(nr,nc), oma=c(2,2,2,1), mar=c(2,2,2,1))
+  
+  for(ss in 1:length(Data$Stocks)){
+    
+    MyMed <- list()
+    MyQT.L <- list()
+    MyQT.H <- list()
+    MyQT.L5 <- list()
+    MyQT.H5 <- list()
+    # first store all model data so can get ylims
+    for(mm in 1:length(Blobs)){
+      StockDat <- lapply(Escape[[mm]], "[", ,ss , ) 
+      MyDat <- lapply(1:length(StockDat), function(x) apply(StockDat[[x]], 1, sum) )
+      MyMed[[mm]] <-  sapply(1:Data$NY, function(x) median(sapply(MyDat, "[", x),na.rm=TRUE ))
+      MyQT.L[[mm]] <- sapply(1:Data$NY, function(x) quantile(sapply(MyDat, "[", x), probs=c(0.025),  na.rm=TRUE  ))
+      MyQT.H[[mm]] <- sapply(1:Data$NY, function(x) quantile(sapply(MyDat, "[", x), probs=c(0.975), na.rm=TRUE  ))
+      MyQT.L5[[mm]] <- sapply(1:Data$NY, function(x) quantile(sapply(MyDat, "[", x), probs=c(0.75),  na.rm=TRUE  ))
+      MyQT.H5[[mm]] <- sapply(1:Data$NY, function(x) quantile(sapply(MyDat, "[", x), probs=c(0.25), na.rm=TRUE  ))
+    } # end mod loop
+    # remove initialization years if applicable
+    if(Opts$Initialization == "Escapement"){
+      Years_To_Plot <- Opts$Years[-(1:Data$MaxAge)]
+      MyMed <- lapply(MyMed, "[", which(Opts$Years %in% Years_To_Plot))
+      MyQT.L <- lapply(MyQT.L, "[", which(Opts$Years %in% Years_To_Plot))
+      MyQT.H <- lapply(MyQT.H, "[", which(Opts$Years %in% Years_To_Plot))
+      MyQT.L5 <- lapply(MyQT.L5, "[", which(Opts$Years %in% Years_To_Plot))
+      MyQT.H5 <- lapply(MyQT.H5, "[", which(Opts$Years %in% Years_To_Plot))
+    } else {
+      Years_To_Plot <- Opts$Years
+    }
+    
+    # Get ylims
+    if(Opts$nSims >1 ){
+      Edat <- Esc_LeadIn[which(as.character(Esc_LeadIn$StockID)==as.character(Data$Stocks[ss])),]
+      esc2019<-Edat[Edat$Year==2019,]
+      Edat <- Edat[-dim(Edat)[1],]
+      ylims <- c( 0 , max(c( unlist(MyMed) + unlist(MyQT.H), na.omit(Edat$Escape) )))
+    }
+    else {
+      ylims <-  c( min(c( unlist(MyMed) )), max(c( unlist(MyMed) )))
+    }  
+    # get escapament init data
+    Edat_Init <- Data$Escapement[which(Data$Escapement$StockID==Data$Stocks[ss]),]
+    # Plot
+    
+    for(mm in 1:length(Blobs)){
+      
+      plot(Edat$Year, Edat$Escape, col="darkgrey", type="l", ylim=ylims, xlim=c(min(Edat$Year), 
+                                                                                max(Opts$Years)), lwd=2, cex.lab=1.15, cex.axis=1.15)
+      # now add initialization data
+      lines(Edat_Init$Year, Edat_Init$Abundance, col="black", lwd=2)
+      
+
+      polygon(y=c(MyQT.L[[mm]], rev(MyQT.H[[mm]])), 
+              x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(cols[mm], 35, sep=""), border=paste(cols[mm], 35, sep=""))
+      
+      # Add tranparent error bars
+      polygon(y=c(MyQT.L5[[mm]], rev(MyQT.H5[[mm]])), 
+              x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(cols[mm], 45, sep=""), border=paste(cols[mm], 45, sep=""))
+      
+      lines(Years_To_Plot, MyMed[[mm]], col=cols[mm], lwd=2.5)
+      # now add 2019 escapement
+      points(esc2019$Year,esc2019$Escape, pch=16, col="red")
+      
+      mtext(side=3, text=paste0(alpha[mm],"% reduction in HM Alpha"), cex=1.15)
+    }
+    # label stock
+    title(main=  Data$Stocks[ss],outer=TRUE,cex.main=1.5)
+    #title(main=  paste0(alpha,"% reduction in HM Alpha"),outer=TRUE,cex.main=0.9, line=-.75)
+    # if last on page do overall labels
+    mtext(side=1, text="Year", outer=T, line=0.5, cex=1.15)
+    mtext(side=2, text = "Escapement", outer=T, line=0.5, cex=1.15)
+    #if(ss %% 4 == 0){
+    #  mtext(side=1, text="Year", outer=T, line=0.5)
+    #  mtext(side=2, text = "Escapement", outer=T, line=0.5)
+    #mtext(side=3, text="Escapement and Targets", outer=T, line=0.5)
+    #  if(length(Blobs) >= 2){
+    #    legend("topright", fill=c("black", cols[1:(length(Blobs)-1)]), legend=Legend_Names)
+    #  } # and more than one model if
+    #} # end final plot of page if
+    
+  } # end Stock loop
+  dev.off()
+} # End Escape Plot function
+
+EscapePlots_alphas <- function(Names, PlotName, alpha, Legend_Names=NA, no.plots,nr, nc, years){
+  
+  # want to extract table of median change in escapment over 10 years (2016 to 2025) and 20 years (2016 to 2035)
+  # also save all blobs
+  Blobs <- list()
+  Escape <- list()
+  for(mm in 1:length(Names)){
+    Blobs[[mm]] <- readRDS(paste("DataOut/", Names[mm], ".rds", sep=""))
+    Escape[[mm]] <- Blobs[[mm]]$Sims$Escape
+  }
+  
+  
+  #Colors -- need to plot less than 7 or not enough colors
+  cols <- c("#0000ff", "#b22222", "#7E3FCC", "#006400", "#FFC725", "#808080", "#EF29E4")
+  TGrey <- "#80808050"
+  
+  # if legend names given, use these, otherwise use scenario names
+  if(is.na(Legend_Names[1])){
+    Legend_Names <- Names
+  }
+  
+  Escape <- AbundDat <- list()
+  for(mm in 1:length(Blobs)){
+    Escape[[mm]] <- Blobs[[mm]]$Sims$Escape
+  }
+  
+  # also read in "leadin" escapement data
+  
+  Esc_LeadIn <- read.csv("DataIn/Escape_LeadIn.csv")
+  
+  
+  # Get require info from first blob, assume they are the same
+  Opts <- Blobs[[1]]$Options
+  Data <- Blobs[[1]]$Data
+  
+  layout(matrix(1:no.plots, nrow = nr, byrow =T))
   pdf(paste("Figures/", PlotName ,".pdf", sep=""))
-  par(mfrow=c(2,2), oma=c(2,2,2,1), mar=c(2,2,2,1))
+  par(mfrow=c(nr,nc), oma=c(2,2,2,1), mar=c(2,2,2,1))
   
   for(ss in 1:length(Data$Stocks)){
     
@@ -196,14 +701,132 @@ EscapePlots <- function(Names, PlotName, LeadIn = T, Legend_Names=NA){
     
     # Get ylims
     if(Opts$nSims >1 ){
+      Edat <- Esc_LeadIn[which(as.character(Esc_LeadIn$StockID)==as.character(Data$Stocks[ss])),]
+      esc2019<-Edat[Edat$Year==2019,]
+      Edat <- Edat[-dim(Edat)[1],]
+      ylims <- c( 0 , max(c( unlist(MyMean) + unlist(MySD), na.omit(Edat$Escape) )))
+    }
+    else {
+      ylims <-  c( min(c( unlist(MyMean) )), max(c( unlist(MyMean) )))
+    }  
+    # get escapament init data
+    Edat_Init <- Data$Escapement[which(Data$Escapement$StockID==Data$Stocks[ss]),]
+    # Plot
+    
+    for(mm in 1:length(Blobs)){
+      aa<-alpha
+      plot(Edat$Year, Edat$Escape, col="darkgrey", type="l", ylim=ylims, xlim=c(min(Edat$Year), 
+                                                                                max(2020)), lwd=2) # Change to Opts$Years is you don't want 2019 to be the max
+      # now add initialization data
+      lines(Edat_Init$Year, Edat_Init$Abundance, col="black", lwd=2)
+      
+      # now add 2019 escapement
+      points(esc2019$Year,esc2019$Escape, pch=16, col="red")
+      
+      lines(Years_To_Plot, MyMean[[mm]], col=cols[mm], lwd=2.5)
+      # end mods loop
+      # Add tranparent error bars
+      polygon(y=c(MyMean[[mm]] - MySD[[mm]], rev(MyMean[[mm]] + MySD[[mm]])), 
+              x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(cols[mm], 50, sep=""), border=cols[mm])
+      mtext(side=3, text=paste0(aa[mm],"% of HM Alpha"), cex=0.85) #"% dec. of Alpha in 2005"
+      aa+1
+    }
+    # label stock
+    title(main=  Data$Stocks[ss],outer=TRUE,cex.main=1.5)
+    title(main=  paste("Projections from ",years,sep=""),outer=TRUE,cex.main=0.9, line=-.45)
+    # if last on page do overall labels
+    mtext(side=1, text="Year", outer=T, line=0.5)
+    mtext(side=2, text = "Escapement", outer=T, line=0.5)
+    #if(ss %% 4 == 0){
+    #  mtext(side=1, text="Year", outer=T, line=0.5)
+    #  mtext(side=2, text = "Escapement", outer=T, line=0.5)
+    #mtext(side=3, text="Escapement and Targets", outer=T, line=0.5)
+    #  if(length(Blobs) >= 2){
+    #    legend("topright", fill=c("black", cols[1:(length(Blobs)-1)]), legend=Legend_Names)
+    #  } # and more than one model if
+    #} # end final plot of page if
+    
+  } # end Stock loop
+  dev.off()
+}
+
+###########################################################
+#  EscapePlots
+#######################################################
+# Purpose: Plots escapement trajectory by stock for one or more scenarios 
+#             (note: if using > 1 scenario, escapement trajectories for each scnenario will be shown in the same plot) 
+# Arguments: Names = names of scenarios to be plotted; each name must have an rds file with that name saved in DataOut folder
+#            PlotName = name that will be used when saving plots as a pdf file in Figures folder 
+#            LeadIn = Indicates whether lead-in (pre-initiaization) escapements should be plotted (True or False)
+#            Smax = Whether or not to add Smax to time-series
+#            nr = number of rows and nc = number of columns
+################################################################
+
+EscapePlots_Sims <- function(Names, PlotName, LeadIn = T, Legend_Names=NA, nr, nc){
+  
+  # want to extract table of median change in escapment over 10 years (2016 to 2025) and 20 years (2016 to 2035)
+  # also save all blobs
+  Blobs <- list()
+  Escape <- list()
+  for(mm in 1:length(Names)){
+    Blobs[[mm]] <- readRDS(paste("DataOut/", Names[mm], ".rds", sep=""))
+    Escape[[mm]] <- Blobs[[mm]]$Sims$Escape
+  }
+  
+  
+  #Colors -- need to plot less than 7 or not enough colors
+  cols <- c("#0000ff", "#b22222", "#7E3FCC", "#006400", "#FFC725", "#808080", "#EF29E4")
+  TGrey <- "#80808050"
+  
+  # if legend names given, use these, otherwise use scenario names
+  if(is.na(Legend_Names[1])){
+    Legend_Names <- Names
+  }
+  
+  Escape <- AbundDat <- list()
+  for(mm in 1:length(Blobs)){
+    Escape[[mm]] <- Blobs[[mm]]$Sims$Escape
+  }
+  
+  # also read in "leadin" escapement data
+  if(LeadIn == T){
+    Esc_LeadIn <- read.csv("DataIn/Escape_LeadIn.csv")
+  }
+  
+  # Get require info from first blob, assume they are the same
+  Opts <- Blobs[[1]]$Options
+  Data <- Blobs[[1]]$Data
+  
+  pdf(paste("Figures/", PlotName ,".pdf", sep=""))
+  par(mfrow=c(nr,nc), oma=c(2,2,2,1), mar=c(2,2,2,1))
+  
+  for(ss in 1:length(Data$Stocks)){
+    
+    # first store all model data so can get ylims
+    for(mm in 1:length(Blobs)){
+      StockDat <- lapply(Escape[[mm]], "[", ,ss , ) 
+      MyDat <- lapply(1:length(StockDat), function(x) apply(StockDat[[x]], 1, sum) )
+    } # end mod loop
+    # remove initialization years if applicable
+    if(Opts$Initialization == "Escapement"){
+      Years_To_Plot <- Opts$Years[-(1:Data$MaxAge)]
+      MyDat <- lapply(MyDat, "[", which(Opts$Years %in% Years_To_Plot))
+    } else {
+      Years_To_Plot <- Opts$Years
+    }
+    
+    # Get ylims
+    if(Opts$nSims >1 ){
       if(LeadIn ==F){
-        ylims <- c( 0, max(c( unlist(MyMean) + unlist(MySD) )))
+        ylims <- c( 0, max(c( unlist(MyDat) )))
       } else {
         Edat <- Esc_LeadIn[which(as.character(Esc_LeadIn$StockID)==as.character(Data$Stocks[ss])),]
-        ylims <- c( 0 , max(c( unlist(MyMean) + unlist(MySD), na.omit(Edat$Escape) )))
+        esc2019<-Edat[Edat$Year==2019,]
+        Edat <- Edat[-dim(Edat)[1],]
+        ylims <- c( 0 , max(c( unlist(MyDat), na.omit(Edat$Escape) )))
       }
     } else {
-      ylims <-  c( min(c( unlist(MyMean) )), max(c( unlist(MyMean) )))
+      ylims <-  c( min(c( unlist(MyDat) )), max(c( unlist(MyDat) )))
     }  
     # get escapament init data
     Edat_Init <- Data$Escapement[which(Data$Escapement$StockID==Data$Stocks[ss]),]
@@ -213,14 +836,21 @@ EscapePlots <- function(Names, PlotName, LeadIn = T, Legend_Names=NA){
                                                                                 max(Opts$Years)), lwd=2)
       # now add initialization data
       lines(Edat_Init$Year, Edat_Init$Abundance, col="black", lwd=2)
+      
+      # now add 2019 escapement
+      points(esc2019$Year,esc2019$Escape, pch=16, col="red")
+      
     } else {
       plot(Edat_Init$Year, Edat_Init$Abundance, col="black", type="l", ylim=ylims, lwd=2, 
            xlim=c(min(Opts$Years), max(Opts$Years)))
     }
     # Now add model projections
-    lines(Years_To_Plot, MyMean[[1]], col="darkgrey", type="l", lwd=2.5)
-    polygon(y=c(MyMean[[1]] - MySD[[1]], rev(MyMean[[1]] + MySD[[1]])), 
-            x=c(Years_To_Plot, rev(Years_To_Plot)), col=TGrey, border="darkgrey")
+    for (ss in 1:Opts$nSims){
+      lines(Years_To_Plot, MyDat[[ss]], col="grey30", type="l", lwd=.75)
+    }
+    #lines(Years_To_Plot, MyMean[[1]], col="darkgrey", type="l", lwd=2.5)
+    #polygon(y=c(MyMean[[1]] - MySD[[1]], rev(MyMean[[1]] + MySD[[1]])), 
+     #       x=c(Years_To_Plot, rev(Years_To_Plot)), col=TGrey, border="darkgrey")
     
     if(length(Blobs) >= 2){
       for(mm in 2:length(Blobs)){
@@ -234,19 +864,12 @@ EscapePlots <- function(Names, PlotName, LeadIn = T, Legend_Names=NA){
     # label stock
     mtext(side=3, text=Data$Stocks[ss])
     # if last on page do overall labels
-    if(ss %% 4 == 0){
-      mtext(side=1, text="Year", outer=T, line=0.5)
-      mtext(side=2, text = "Escapement", outer=T, line=0.5)
-      #mtext(side=3, text="Escapement and Targets", outer=T, line=0.5)
-      if(length(Blobs) >= 2){
-        legend("topright", fill=c("black", cols[1:(length(Blobs)-1)]), legend=Legend_Names)
-      } # and more than one model if
-    } # end final plot of page if
+    mtext(side=1, text="Year", outer=T, line=0.5)
+    mtext(side=2, text = "Escapement", outer=T, line=0.5)
     
   } # end Stock loop
   dev.off()
 } # End Escape Plot function
-
 
 
 #*###########################################################
@@ -1235,3 +1858,349 @@ AI_4_Panel <- function(Names, PlotName="AI_4Panel",
   dev.off()
   
 } # End catch 4 panel
+
+#*###########################################################
+#  Escape_4_Panel_2
+#######################################################
+# Purpose: Plots escapement trajectories for the 2 productivity values and depensatory effects
+# Arguments: Names = names of scenarios to be plotted; each name must have an rds file with that name saved in DataOut folder
+#            Esc_LeadIn = Indicates whether lead-in (pre-initiaization) escapements should be plotted (True or False)
+#            PlotName = name that will be used when saving plots as a pdf file in Figures folder 
+################################################################
+# Use Esc_medians and Esc_SDs from compiled outputs (indexed by mm,ss) 
+
+Escape_4_Panel_2 <- function(Names, Esc_LeadIn, PlotName="Escape_4Panel_2", yscale=1, setmax=c(9:16), Plot_Spawners=F,
+                             Mods2Plot_1 = c(1,2,3,4), Mods2Plot_2 = c(5,6,7,8), Mods2Plot_3 = c(9,10,11,12), 
+                             Mods2Plot_4 = c(13,14,15,16), Scenarios = "Fishing_Depensation", BiasNum) {
+  
+  
+  # want to extract table of median change in escapment over 10 years (2016 to 2025) and 20 years (2016 to 2035)
+  # also save all blobs
+  Blobs <- list()
+  Escape <- list()
+  Spawners <- list()
+  
+  for(mm in 1:length(Names)){
+    Blobs[[mm]] <- readRDS(paste("DataOut/", Names[mm], ".rds", sep=""))
+    Escape[[mm]] <- Blobs[[mm]]$Sims$Escape
+    if(Plot_Spawners==T){
+      Spawners[[mm]] <- Blobs[[mm]]$Sims$Spawners
+    }
+  }
+  
+  
+  cols <- c("#836FFF", "#00F5FF", "#00EE76", "#FFD700", "#708090") #FFD700 gold to replace yellow1 (#FFFF00)
+  #cols <- c("slateblue1", "turquoise1", "springgreen1", "gold",  "slategray2") "violetred1"
+  #cols <- c("#0000ff", "#b22222", "#006400", "#FF9937","#7F3DCC",  "#808080")
+  #  Blue, Green, Red, Orange, Purple, grey
+  TGrey <- "#80808050"
+  
+  
+  pdf(paste("Figures/", PlotName ,".pdf", sep=""))
+  par(mfrow=c(2,2), oma=c(2,3,2,1), mar=c(2,2,2,1))
+  
+  Stocks <- Blobs[[1]]$Data$StocksInfo$StockID
+  Years <- Blobs[[1]]$Options$Years
+  NY <- Blobs[[1]]$Data$NY
+  MaxAge <- Blobs[[1]]$Data$MaxAge
+  Escapement <- Blobs[[1]]$Data$Escapement
+  
+  StocksInfo_List <- list()
+  for(mm in 1:length(Blobs)){
+    StocksInfo_List[[mm]] <- Blobs[[1]]$Data$StocksInfo
+  }
+  
+  
+  for(ss in 1:length(Stocks)){
+    MyMean <- list()
+    MySD <- list()
+    # first store all model data so can get ylims
+    for(mm in 1:length(Blobs)){
+      if(Plot_Spawners==T){
+        MyDat <- lapply(Spawners[[mm]], "[", ,ss  ) 
+      } else {
+        StockDat <- lapply(Escape[[mm]], "[", ,ss , ) 
+        MyDat <- lapply(1:length(StockDat), function(x) apply(StockDat[[x]], 1, sum) )
+      }
+      MyMean[[mm]] <-  sapply(1:NY, function(x) mean(sapply(MyDat, "[", x) ))
+      MySD[[mm]] <- sapply(1:NY, function(x) sd(sapply(MyDat, "[", x) ))
+    } # end mod loop
+    # remove initialization years
+    Years_To_Plot <- Years[-(1:MaxAge)]
+    MyMean <- lapply(MyMean, "[", which(Years %in% Years_To_Plot))
+    MySD <- lapply(MySD, "[", which(Years %in% Years_To_Plot))
+    # Get ylims
+    Edat <- Esc_LeadIn[which(Esc_LeadIn$StockID==Stocks[ss] & Esc_LeadIn$Year < min(Years)), ]
+    # need wider bounds for some stocks to make room for legend
+    
+    ylims <- c( 0 , max(c( unlist(MyMean) + unlist(MySD), Edat$Escape )*yscale, na.rm=T))
+    
+    # get escapament init data
+    Edat_Init <- Escapement[which(Escapement$StockID==Stocks[ss]),]
+    # Plot
+    #**************************************************
+    # Panel 1 -- Basic Ricker with 4 fishing scenarios and no depensatory effects
+    Cols <- c(cols[1:4]) 
+    # start with leadin and inits
+    plot(Edat$Year, Edat$Escape, col="darkgrey", type="l", ylim=ylims, xlim=c(min(Edat$Year), max(Years)), lwd=2, ann=F)
+    # now add initialization data
+    lines(Edat_Init$Year, Edat_Init$Abundance, col="black", lwd=2)
+    # Now add model fits
+    for(mm in 1:length(Mods2Plot_1)){
+      lines(Years_To_Plot, MyMean[[Mods2Plot_1[mm]]], col=Cols[mm], lwd=2)
+      # end mods loop
+      # Add tranparent error bars
+      polygon(y=c(MyMean[[Mods2Plot_1[mm]]] - MySD[[Mods2Plot_1[mm]]], rev(MyMean[[Mods2Plot_1[mm]]] + MySD[[Mods2Plot_1[mm]]])), 
+              x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(Cols[mm], 50, sep=""), border=Cols[mm])
+    } # end mod loop
+    
+    mtext(side=2, line=3, text="Historical Productivity")
+    mtext(side=3, line=1, text="No Depensatory Effects")
+    
+    #**************************************************
+    # Panel 2 -- Basic Ricker with 4 fishing scenarios and depensatory effects
+    
+    # start with leadin and inits
+    plot(Edat$Year, Edat$Escape, col="darkgrey", type="l", ylim=ylims, xlim=c(min(Edat$Year), max(Years)), lwd=2, ann=F)
+    # now add initialization data
+    lines(Edat_Init$Year, Edat_Init$Abundance, col="black", lwd=2)
+    # Now add model fits
+    for(mm in 1:length(Mods2Plot_2)){
+      lines(Years_To_Plot, MyMean[[Mods2Plot_2[mm]]], col=Cols[mm], lwd=2)
+      # end mods loop
+      # Add tranparent error bars
+      polygon(y=c(MyMean[[Mods2Plot_2[mm]]] - MySD[[Mods2Plot_2[mm]]], rev(MyMean[[Mods2Plot_2[mm]]] + MySD[[Mods2Plot_2[mm]]])), 
+              x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(Cols[mm], 50, sep=""), border=Cols[mm])
+      
+    } # end mod loop
+    
+    legend("topleft", col=c(Cols), 
+           legend=c("Current", "50% Curr.", "50% Curr. PT", "No Fishing"), title="Fishing Scenario",
+           bty="n", cex=0.8, lwd=2, lty=c(1,1,1,1))
+    
+    mtext(side=3, line=1, text="Depensatory Effects")
+    
+    #***************************************************
+    #Set new ylims for time varying productivity
+    ylims <- c( 0 , max(c( unlist(MyMean[setmax]) + unlist(MySD[setmax]), Edat$Escape )*yscale, na.rm=T))
+    
+    #**************************************************
+    # Panel 3 --  Time varying productivity with 4 fishing scenarios and no depensatory effects
+    
+    # start with leadin and inits
+    plot(Edat$Year, Edat$Escape, col="darkgrey", type="l", ylim=ylims, xlim=c(min(Edat$Year), max(Years)), lwd=2, ann=F)
+    # now add initialization data
+    lines(Edat_Init$Year, Edat_Init$Abundance, col="black", lwd=2)
+    # Now add model fits
+    for(mm in 1:length(Mods2Plot_3)){
+      lines(Years_To_Plot, MyMean[[Mods2Plot_3[mm]]], col=Cols[mm], lwd=2)
+      # Add tranparent error bars
+      polygon(y=c(MyMean[[Mods2Plot_3[mm]]] - MySD[[Mods2Plot_3[mm]]], rev(MyMean[[Mods2Plot_3[mm]]] + MySD[[Mods2Plot_3[mm]]])), 
+              x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(Cols[mm], 50, sep=""), border=Cols[mm])
+    } # end mod loop
+    
+    mtext(side=2, line=3, text="Time-Varying Productivity")
+    
+    #***************************************************
+    # Panel 4 -- Time Varying Productivity with 4 fishing scenarios and depensatory effects
+    
+    # start with leadin and inits
+    plot(Edat$Year, Edat$Escape, col="darkgrey", type="l", ylim=ylims, xlim=c(min(Edat$Year), max(Years)), lwd=2, ann=F)
+    # now add initialization data
+    lines(Edat_Init$Year, Edat_Init$Abundance, col="black", lwd=2)
+    # Now add model fits
+    for(mm in 1:length(Mods2Plot_4)){
+      lines(Years_To_Plot, MyMean[[Mods2Plot_4[mm]]], col=Cols[mm], lwd=2)
+      # end mods loop
+      # Add tranparent error bars
+      polygon(y=c(MyMean[[Mods2Plot_4[mm]]] - MySD[[Mods2Plot_4[mm]]], rev(MyMean[[Mods2Plot_4[mm]]] + MySD[[Mods2Plot_4[mm]]])), 
+              x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(Cols[mm], 50, sep=""), border=Cols[mm])
+      
+    } # end mod loop
+    
+    # label stock
+    mtext(side=3, text=Stocks[ss], outer=T)
+    # add overall labels
+    mtext(side=1, text="Year", outer=T, line=0.5)
+    mtext(side=2, text = "Escapement", outer=T)
+  } # end Stock loop
+  dev.off()
+  
+} # End Escape_4_Panel_2 function
+
+#*###########################################################
+#  Escape_ByFishing
+#######################################################
+# Purpose: Plots escapement trajectories for the 2 productivity values and depensatory effects by each fishing scenario
+# Arguments: Names = names of scenarios to be plotted; each name must have an rds file with that name saved in DataOut folder
+#            Esc_LeadIn = Indicates whether lead-in (pre-initiaization) escapements should be plotted (True or False)
+#            PlotName = name that will be used when saving plots as a pdf file in Figures folder
+#            skip = lets you change how many scenarios are skipped (will be the same as the number of HR used)
+################################################################
+# Use Esc_medians and Esc_SDs from compiled outputs (indexed by mm,ss) 
+
+Escape_ByFishing <- function(Names, Esc_LeadIn, Fishery = c("Current", "50% Curr.", "50% Curr. PT", "No Fishing"), PlotName="Escape_ByFishing", 
+                             yscale=1, Plot_Spawners=F, skip=c(4), Scenarios = "Fishing_Depensation") {
+  
+  # also save all blobs
+  Blobs <- list()
+  Escape <- list()
+  Spawners <- list()
+  
+  for(mm in 1:length(Names)){
+    Blobs[[mm]] <- readRDS(paste("DataOut/", Names[mm], ".rds", sep=""))
+    Escape[[mm]] <- Blobs[[mm]]$Sims$Escape
+    if(Plot_Spawners==T){
+      Spawners[[mm]] <- Blobs[[mm]]$Sims$Spawners
+    }
+  }
+  
+  
+  cols <- c("#836FFF", "#00F5FF", "#00EE76", "#FFD700", "#708090") #FFD700 gold to replace yellow1 (#FFFF00)
+  #cols <- c("slateblue1", "turquoise1", "springgreen1", "gold",  "slategray2") "violetred1"
+  #cols <- c("#0000ff", "#b22222", "#006400", "#FF9937","#7F3DCC",  "#808080")
+  #  Blue, Green, Red, Orange, Purple, grey
+  TGrey <- "#80808050"
+  
+  
+  pdf(paste("Figures/", PlotName ,".pdf", sep=""))
+  par(mfrow=c(2,2), oma=c(2,3,2,1), mar=c(2,2,2,1))
+  
+  Stocks <- Blobs[[1]]$Data$StocksInfo$StockID
+  Years <- Blobs[[1]]$Options$Years
+  NY <- Blobs[[1]]$Data$NY
+  MaxAge <- Blobs[[1]]$Data$MaxAge
+  Escapement <- Blobs[[1]]$Data$Escapement
+  
+  StocksInfo_List <- list()
+  for(mm in 1:length(Blobs)){
+    StocksInfo_List[[mm]] <- Blobs[[1]]$Data$StocksInfo
+  }
+  
+  for(ss in 1:length(Stocks)){
+    MyMean <- list()
+    MySD <- list()
+    # first store all model data so can get ylims
+    for(mm in 1:length(Blobs)){
+      if(Plot_Spawners==T){
+        MyDat <- lapply(Spawners[[mm]], "[", ,ss  ) 
+      } else {
+        StockDat <- lapply(Escape[[mm]], "[", ,ss , ) 
+        MyDat <- lapply(1:length(StockDat), function(x) apply(StockDat[[x]], 1, sum) )
+      }
+      MyMean[[mm]] <-  sapply(1:NY, function(x) mean(sapply(MyDat, "[", x) ))
+      MySD[[mm]] <- sapply(1:NY, function(x) sd(sapply(MyDat, "[", x) ))
+    } # end mod loop
+    # remove initialization years
+    Years_To_Plot <- Years[-(1:MaxAge)]
+    MyMean <- lapply(MyMean, "[", which(Years %in% Years_To_Plot))
+    MySD <- lapply(MySD, "[", which(Years %in% Years_To_Plot))
+    # Get ylims
+    Edat <- Esc_LeadIn[which(Esc_LeadIn$StockID==Stocks[ss] & Esc_LeadIn$Year < min(Years)), ]
+    
+    # get escapament init data
+    Edat_Init <- Escapement[which(Escapement$StockID==Stocks[ss]),]
+    
+    for( ff in 1:length(Fishery)) {
+      
+      if( Fishery[ff] == "Current") {
+        ylims <- c( 0 , max(c( unlist(MyMean[c(1,5,9,13)]) + unlist(MySD[c(1,5,9,13)]), Edat$Escape )*yscale, na.rm=T))
+        Mods2Plot <- c(1)} 
+      if( Fishery[ff] == "50% Curr.") {
+        ylims <- c( 0 , max(c( unlist(MyMean[c(2,6,10,14)]) + unlist(MySD[c(2,6,10,14)]), Edat$Escape )*yscale, na.rm=T))
+        Mods2Plot <- c(2)}
+      if( Fishery[ff] == "50% Curr. PT") {
+        ylims <- c( 0 , max(c( unlist(MyMean[c(3,7,11,15)]) + unlist(MySD[c(3,7,11,15)]), Edat$Escape )*yscale, na.rm=T))
+        Mods2Plot <- c(3)}
+      if( Fishery[ff] == "No Fishing") {
+        ylims <- c( 0 , max(c( unlist(MyMean[c(4,8,12,16)]) + unlist(MySD[c(4,8,12,16)]), Edat$Escape )*yscale, na.rm=T))
+        Mods2Plot <- c(4)}
+      
+      # Plot
+      #**************************************************
+      # Panel 1 -- Basic Ricker with no depensatory effects
+      Cols <- c(cols[1:4]) 
+      # start with leadin and inits
+      plot(Edat$Year, Edat$Escape, col="darkgrey", type="l", ylim=ylims, xlim=c(min(Edat$Year), max(Years)), lwd=2, ann=F)
+      # now add initialization data
+      lines(Edat_Init$Year, Edat_Init$Abundance, col="black", lwd=2)
+      # Now add model fits
+      lines(Years_To_Plot, MyMean[[Mods2Plot]], col=Cols[ff], lwd=2)
+      # end mods loop
+      # Add tranparent error bars
+      polygon(y=c(MyMean[[Mods2Plot]] - MySD[[Mods2Plot]], rev(MyMean[[Mods2Plot]] + MySD[[Mods2Plot]])), 
+              x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(Cols[ff], 50, sep=""), border=Cols[ff])
+      
+      mtext(side=2, line=3, text="Historical Productivity")
+      mtext(side=3, line=1, text="No Depensatory Effects")
+      
+      #Goes to the next time that fishery is used
+      Mods2Plot <- Mods2Plot + skip
+      
+      #**************************************************
+      # Panel 2 -- Basic Ricker and depensatory effects
+      
+      # start with leadin and inits
+      plot(Edat$Year, Edat$Escape, col="darkgrey", type="l", ylim=ylims, xlim=c(min(Edat$Year), max(Years)), lwd=2, ann=F)
+      # now add initialization data
+      lines(Edat_Init$Year, Edat_Init$Abundance, col="black", lwd=2)
+      # Now add model fits
+      
+      lines(Years_To_Plot, MyMean[[Mods2Plot]], col=Cols[ff], lwd=2)
+      # end mods loop
+      # Add tranparent error bars
+      polygon(y=c(MyMean[[Mods2Plot]] - MySD[[Mods2Plot]], rev(MyMean[[Mods2Plot]] + MySD[[Mods2Plot]])), 
+              x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(Cols[ff], 50, sep=""), border=Cols[ff])
+      
+      mtext(side=3, line=1, text="Depensatory Effects")
+      
+      #Goes to the next time that fishery is used
+      Mods2Plot <- Mods2Plot + skip
+      
+      #**************************************************
+      # Panel 3 --  Time varying productivity and no depensatory effects
+      
+      # start with leadin and inits
+      plot(Edat$Year, Edat$Escape, col="darkgrey", type="l", ylim=ylims, xlim=c(min(Edat$Year), max(Years)), lwd=2, ann=F)
+      # now add initialization data
+      lines(Edat_Init$Year, Edat_Init$Abundance, col="black", lwd=2)
+      # Now add model fits
+      
+      lines(Years_To_Plot, MyMean[[Mods2Plot]], col=Cols[ff], lwd=2)
+      # Add tranparent error bars
+      polygon(y=c(MyMean[[Mods2Plot]] - MySD[[Mods2Plot]], rev(MyMean[[Mods2Plot]] + MySD[[Mods2Plot]])), 
+              x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(Cols[ff], 50, sep=""), border=Cols[ff])
+      
+      
+      mtext(side=2, line=3, text="Time-Varying Productivity")
+      
+      #Goes to the next time that fishery is used
+      Mods2Plot <- Mods2Plot + skip
+      
+      #***************************************************
+      # Panel 4 -- Time Varying Productivity and depensatory effects
+      
+      # start with leadin and inits
+      plot(Edat$Year, Edat$Escape, col="darkgrey", type="l", ylim=ylims, xlim=c(min(Edat$Year), max(Years)), lwd=2, ann=F)
+      # now add initialization data
+      lines(Edat_Init$Year, Edat_Init$Abundance, col="black", lwd=2)
+      # Now add model fits
+      
+      lines(Years_To_Plot, MyMean[[Mods2Plot]], col=Cols[ff], lwd=2)
+      # end mods loop
+      # Add tranparent error bars
+      polygon(y=c(MyMean[[Mods2Plot]] - MySD[[Mods2Plot]], rev(MyMean[[Mods2Plot]] + MySD[[Mods2Plot]])), 
+              x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(Cols[ff], 50, sep=""), border=Cols[ff])
+      
+      # label stock
+      mtext(side=3, text=Fishery[ff], outer=T)
+      # add overall labels
+      mtext(side=1, text="Year", outer=T, line=0.5)
+      mtext(side=2, text = "Escapement", outer=T)
+      
+      
+    } # end Fishing loop
+    dev.off()
+  } # End stocks loop 
+} # End Escape_4_Panel_2 function
+

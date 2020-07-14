@@ -1,6 +1,7 @@
 #########################################################
 ##     Helper Functions for Chinook MSE Simulator      ##
 ##            Brooke Davis & Kendra Holt               ##
+##              Edited by Lauren Weir                  ##
 #########################################################
 
 
@@ -30,8 +31,8 @@
 ###########################################
 
 # Initialize simulation run with options
-Init.Blob <- function(Name, SR, BM, Initialization, Years, HRS, EV_Type, nSims,
-                      Prod_Scenario, CC_Scenario,  Smolts_Scenario, Exclude_Jacks=T) {
+Init.Blob <- function(Name, SR, BM, Initialization, Years, HRS, EV_Type, nSims, Prod_Scenario,
+                       CC_Scenario,  Smolts_Scenario, Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0) {
   Blob <- list()
   Blob$Options <- list()
   # Add options
@@ -47,6 +48,8 @@ Init.Blob <- function(Name, SR, BM, Initialization, Years, HRS, EV_Type, nSims,
   Blob$Options$CC_Scenario <- CC_Scenario
   Blob$Options$Smolts_Scenario <- Smolts_Scenario
   Blob$Options$Exclude_Jacks <- Exclude_Jacks
+  Blob$Options$Depensatory_Effects <- Depensatory_Effects
+  Blob$Options$BigBar <- BigBar
   Blob
 }
 
@@ -87,7 +90,13 @@ Read.Data <- function(Blob, FolderPath="DataIn"){
   Data$NS <- length(unique(Data$Stocks))
 
   # Add SR Params and BM's according to options
-  SR_Dat <- read.csv(paste(FolderPath, "/SR_Params/", Blob$Options$SR, "_SR.csv", sep=""))
+  if(Data$Stocks != "Harrison") {
+  SR_File <- read.csv(paste(FolderPath, "/SR_Params/HabModel_SR.csv", sep=""))
+  SR_Dat <- SR_File[SR_File$Reduction == Blob$Options$SR, ]}
+  
+  if(Data$Stocks == "Harrison") {
+    SR_Dat <- read.csv(paste(FolderPath, "/SR_Params/", Blob$Options$SR, "_SR.csv", sep=""))}
+  
   BM_Dat <- read.csv(paste(FolderPath, "/Benchmarks/", Blob$Options$BM, "_BM.csv", sep=""))
 
   # Convert to StockID fields to characters to avoid warning message:
@@ -116,7 +125,6 @@ Read.Data <- function(Blob, FolderPath="DataIn"){
   Data$Prod_Mults <- Prod_Mults
   Data$CC_Mults <- CC_Mults
 
-
   #*****************************
   # Read in fisheries info
   Data$FisheryInfo <- read.csv(paste(FolderPath, "/Fisheries.csv", sep=""))
@@ -138,7 +146,7 @@ Read.Data <- function(Blob, FolderPath="DataIn"){
   #********************************
   # Exploitation Rates
     Data$Base_ER <- read.csv(paste(FolderPath, "/Effort_Based_Total_Mortality.csv", sep=""))
-    Data$Base_ER_Landed <- read.csv(paste(FolderPath, "/Effort_Based_Landed_Mortality.csv", sep=""))
+    #Data$Base_ER_Landed <- read.csv(paste(FolderPath, "/Effort_Based_Landed_Mortality.csv", sep=""))
 
   #**********************************************
   #Regional Distribution coefficients
@@ -147,7 +155,7 @@ Read.Data <- function(Blob, FolderPath="DataIn"){
   #*******************************************
   # Terminal harvest rate by stock, fishery, age
   Data$TermHR <- read.csv(paste(FolderPath, "/Stock_TermHR_Total_Mortality.csv", sep=""))
-  Data$TermHR_Landed <- read.csv(paste(FolderPath, "/Stock_TermHR_Landed_Mortality.csv", sep=""))
+  #Data$TermHR_Landed <- read.csv(paste(FolderPath, "/Stock_TermHR_Landed_Mortality.csv", sep=""))
 
 
   #**********************************
@@ -172,13 +180,18 @@ Read.Data <- function(Blob, FolderPath="DataIn"){
     Data$EVs <- read.csv(paste(FolderPath, "/" , Blob$Options$EV_Type, ".csv", sep=""))
   }
 
-
   #**********************************
   #Smolts scenario
   if(Blob$Options$Smolts_Scenario != 1){
      Data$Smolts <- read.csv(paste(FolderPath, "/Smolt_Scenarios/", Blob$Options$Smolts_Scenario, ".csv", sep=""))
   }
 
+  #*********************************
+  # Set up the escapement survival if BigBar is TRUE
+  if(Blob$Options$BigBar != 0){
+    Data$BigBar <- read.csv(paste(FolderPath, "/BigBar/BigBar", Blob$Options$BigBar,".csv", sep=""))
+  }
+  
   # Return data list to be added to blob
   Data
 } # end read.data function
