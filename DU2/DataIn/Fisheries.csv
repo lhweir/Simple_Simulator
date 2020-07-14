@@ -1,0 +1,5 @@
+FisheryID, Name, Region, Sector,Type,HarvCtrl,ER_Data_Type,ER_Type,Term_Stock
+1,PT_Fishery,1,All,PT,Effort,Base,Total,NA
+2,US_PT_Fishery,1,All,PT,Effort,Base,Total,NA
+3,Term_Fishery,NA,Term,TERM,Effort,Base,Total,Harrison
+4,US_Term_Fishery,NA,Term,TERM,Effort,Base,Total,Harrison
