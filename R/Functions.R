@@ -656,15 +656,33 @@ Get.Recruitment <- function(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var
     }
     
     # Add Variability
-    if(Var==T){
-      # get process error (precision) from StockInfo file
       TauR <- StocksInfo$TauR[which(StocksInfo$StockID==Stocks[ss])]
-      SD_R <- 1/sqrt(TauR)
-      # Draw random variability
-      E_R <- rnorm(1, 0, SD_R)
-      # Multiply Recruitment by this value
-      R <- R*exp(E_R-(SD_R^2)/2)
-    }
+      SD_Total <- 1/sqrt(TauR)
+      rho <- StocksInfo$rho[which(StocksInfo$StockID==Stocks[ss])] # needs to be added to input file
+      E_0 <- StocksInfo$E_0[which(StocksInfo$StockID==Stocks[ss])] # needs to be added to input file
+      
+      if(Var==T){
+        if(AutoCorr == T){
+          SD_AR <- SD_Total*sqrt(1-rho^2)
+          delta <- rnorm(1, 0, SD_AR)
+          if(yy == 1){ 
+            # if first year just simulate random resid
+            E_prev <- E_0 
+          } else {
+            E_prev <- E_R[yy-1]
+          }
+          E_R[yy] <- E_prev * rho + delta
+        } else {
+          E_R <- rnorm(1, 0, SD_Total)
+        }
+        # Multiply Recruitment by this value
+        if(LNormBias == T){ 
+          R <- R*exp(E_R[yy]-(SD_Total^2)/2)
+        } else {
+          R <- R*exp(E_R[yy])
+        }
+      }  
+      
     # Convert to age 1's
       
     # get survival rate

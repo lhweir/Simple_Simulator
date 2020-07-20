@@ -28,11 +28,15 @@
 #           minVuln = minimum vulnerability (should move later ...)
 #           Prod_Scenario = Productivity scenario (how alpha changes over time)
 #           CC_Scenario = Carrying Capacity scenario (how Smax changes over time)
+#           Depensatory_Effects = If TRUE, depensatory effects are included
+#           BigBar = If Big Bar = 1, then effects from Big Bar are included
+#           AutoCorr = If TRUE, depensatory effects are included
+#           LNormBias = If Big Bar = 1, then effects from Big Bar are included
 ###########################################
 
 # Initialize simulation run with options
 Init.Blob <- function(Name, SR, BM, Initialization, Years, HRS, EV_Type, nSims, Prod_Scenario,
-                       CC_Scenario,  Smolts_Scenario, Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0) {
+                       CC_Scenario,  Smolts_Scenario, Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr, LNormBias) {
   Blob <- list()
   Blob$Options <- list()
   # Add options
@@ -50,6 +54,8 @@ Init.Blob <- function(Name, SR, BM, Initialization, Years, HRS, EV_Type, nSims, 
   Blob$Options$Exclude_Jacks <- Exclude_Jacks
   Blob$Options$Depensatory_Effects <- Depensatory_Effects
   Blob$Options$BigBar <- BigBar
+  Blob$Options$AutoCorr <- AutoCorr
+  Blob$Options$LNormBias <- LNormBias
   Blob
 }
 
@@ -145,8 +151,7 @@ Read.Data <- function(Blob, FolderPath="DataIn"){
 
   #********************************
   # Exploitation Rates
-    Data$Base_ER <- read.csv(paste(FolderPath, "/Effort_Based_Total_Mortality.csv", sep=""))
-    #Data$Base_ER_Landed <- read.csv(paste(FolderPath, "/Effort_Based_Landed_Mortality.csv", sep=""))
+  Data$Base_ER <- read.csv(paste(FolderPath, "/Effort_Based_Total_Mortality.csv", sep=""))
 
   #**********************************************
   #Regional Distribution coefficients
@@ -155,8 +160,6 @@ Read.Data <- function(Blob, FolderPath="DataIn"){
   #*******************************************
   # Terminal harvest rate by stock, fishery, age
   Data$TermHR <- read.csv(paste(FolderPath, "/Stock_TermHR_Total_Mortality.csv", sep=""))
-  #Data$TermHR_Landed <- read.csv(paste(FolderPath, "/Stock_TermHR_Landed_Mortality.csv", sep=""))
-
 
   #**********************************
   # Fishery harvest Rate scalars

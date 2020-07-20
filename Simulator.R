@@ -69,8 +69,8 @@ for(i in 1:length(Prod)){
     print(Names[Scenario])
     # Initialize "blob"
     BlobHar <- Init.Blob(SR = Prod[i], Years = 2015:2031, HRS = Fish[j], nSims = nSims,
-                         Name=Names[Scenario],  BM="WSP", Initialization ="Escapement",EV_Type="1",
-                         Prod_Scenario = P_Scenario[p], CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0)
+                         Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario[p],
+                         CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=T, LNormBias=T)
     # Load data to blob
     BlobHar$Data <- Read.Data(BlobHar)
     # Run simulations
