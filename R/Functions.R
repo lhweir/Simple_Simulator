@@ -100,6 +100,9 @@ Run.CN.MSE.Sim <- function(Blob){
     # Recruits
     Recruits <- array(dim=c(NY, NS))
     
+    # Keep track of the residuals for Auto Correlation
+    E_Rs<-matrix(nrow=length(Years),ncol=1)
+    
     # =================================================
     # Simulate Maturation rates to use in the projections
     # Function is located in helperFucntions file
@@ -400,7 +403,7 @@ Run.CN.MSE.Sim <- function(Blob){
           # If ocean-type, age 1 recruitment is predicted for year yy+1:
           if (as.character(StocksInfo$Ocean_Stream[which(StocksInfo$StockID==Stocks[ss])]) == "Ocean") {
             Cohort[yy+1, ss, 1] <- Get.Recruitment(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var=T, Spawners, MatRates,
-                                                   StocksInfo, Surv, Prod_Mults, CC_Mults, Smolts_Scenario, Dep) * EV # Just changing ocean type for now during testing
+                                                   StocksInfo, Surv, Prod_Mults, CC_Mults, Smolts_Scenario, Dep, AutoCorr, LNormBias) * EV # Just changing ocean type for now during testing
 
           # If stream-type, age 2 recruitment is predicted for year yy+2
           } else if (as.character(StocksInfo$Ocean_Stream[which(StocksInfo$StockID==Stocks[ss])]) == "Stream") {
@@ -410,7 +413,7 @@ Run.CN.MSE.Sim <- function(Blob){
             if (yy < (length(Years)-1)) {
               # currently not randomized -- using mean instead of S for survival
               Cohort[yy+2, ss, 2] <- Get.Recruitment(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var=T, Spawners, MatRates,
-                                                     StocksInfo, Surv, Prod_Mults, CC_Mults, Smolts_Scenario, Dep) * EV
+                                                     StocksInfo, Surv, Prod_Mults, CC_Mults, Smolts_Scenario, Dep, AutoCorr, LNormBias) * EV
             }
           } # end stream-type else
         } # end if not final year -- if final year nothing needs to happen
@@ -638,7 +641,7 @@ Get.PT.Catch.Effort<-function(Years, Stocks, Ages, yy, pp, region, ff, N, Base_E
 ################################################################
 
 Get.Recruitment <- function(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var, Spawners, MatRates, StocksInfo, Surv,
-                             Prod_Mults, CC_Mults, Smolts_Scenario, Dep){
+                             Prod_Mults, CC_Mults, Smolts_Scenario, Dep, AutoCorr, LNormBias){
   #~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Case 1: Natural stock
   #~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -658,8 +661,8 @@ Get.Recruitment <- function(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var
     # Add Variability
       TauR <- StocksInfo$TauR[which(StocksInfo$StockID==Stocks[ss])]
       SD_Total <- 1/sqrt(TauR)
-      rho <- StocksInfo$rho[which(StocksInfo$StockID==Stocks[ss])] # needs to be added to input file
-      E_0 <- StocksInfo$E_0[which(StocksInfo$StockID==Stocks[ss])] # needs to be added to input file
+      rho <- StocksInfo$rho[which(StocksInfo$StockID==Stocks[ss])] 
+      E_0 <- StocksInfo$E_0[which(StocksInfo$StockID==Stocks[ss])] 
       
       if(Var==T){
         if(AutoCorr == T){
@@ -669,17 +672,26 @@ Get.Recruitment <- function(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var
             # if first year just simulate random resid
             E_prev <- E_0 
           } else {
-            E_prev <- E_R[yy-1]
+            E_prev <- E_Rs[yy-1]
           }
-          E_R[yy] <- E_prev * rho + delta
+          E_Rs[yy] <- E_prev * rho + delta
+          
+          # Multiply Recruitment by this value
+          if(LNormBias == T){ 
+            R <- R*exp(E_Rs[yy]-(SD_Total^2)/2)
+          } else {
+            R <- R*exp(E_Rs[yy])
+          }
+          
         } else {
           E_R <- rnorm(1, 0, SD_Total)
-        }
-        # Multiply Recruitment by this value
-        if(LNormBias == T){ 
-          R <- R*exp(E_R[yy]-(SD_Total^2)/2)
-        } else {
-          R <- R*exp(E_R[yy])
+          
+          # Multiply Recruitment by this value
+          if(LNormBias == T){ 
+            R <- R*exp(E_R -(SD_Total^2)/2)
+          } else {
+            R <- R*exp(E_R)
+          }
         }
       }  
       
@@ -805,7 +817,7 @@ Get.Recruitment <- function(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var
   } # end enhanced
 
 
-  age1Fish
+  return(age1Fish)
 
 } # end Get.Recruitment function
 
