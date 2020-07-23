@@ -1,2 +1,2 @@
-StockID,Ricker_A,Ricker_B,TauR,rho,E_0
+StockID,Ricker_A,Ricker_B,Sigma,rho,E_0
 Harrison,1.64,4.87E-06,1.51,0.49,

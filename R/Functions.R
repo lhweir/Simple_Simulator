@@ -659,8 +659,7 @@ Get.Recruitment <- function(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var
     }
     
     # Add Variability
-      TauR <- StocksInfo$TauR[which(StocksInfo$StockID==Stocks[ss])]
-      SD_Total <- 1/sqrt(TauR)
+      SD_Total <- StocksInfo$Sigma[which(StocksInfo$StockID==Stocks[ss])]
       rho <- StocksInfo$rho[which(StocksInfo$StockID==Stocks[ss])] 
       E_0 <- StocksInfo$E_0[which(StocksInfo$StockID==Stocks[ss])] 
       
