@@ -365,8 +365,22 @@ EscapePlots.Quant <- function(Names, PlotName, LeadIn = T, Legend_Names=NA, nr, 
     polygon(y=c(MyQT.L5[[1]], rev(MyQT.H5[[1]])), 
             x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(cols[1], 45, sep=""), border=paste(cols[1], 45, sep="")) #col= "grey85",  border="darkgrey"
     
-    lines(Years_To_Plot, MyMed[[1]], col=cols[1], type="l", lwd=2.5)
     
+    
+    #Now add 10 random full simulation lines <-- made it look pretty messy, not terrible, could be added if folks wanted
+    samples<- MyDat[c(sample(Opts$nSims,10))]
+    lines(Years_To_Plot, samples[[1]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+    lines(Years_To_Plot, samples[[2]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+    lines(Years_To_Plot, samples[[3]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+    lines(Years_To_Plot, samples[[4]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+    lines(Years_To_Plot, samples[[5]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+    lines(Years_To_Plot, samples[[6]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+    lines(Years_To_Plot, samples[[7]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+    lines(Years_To_Plot, samples[[8]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+    lines(Years_To_Plot, samples[[9]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+    lines(Years_To_Plot, samples[[10]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+    
+    lines(Years_To_Plot, MyMed[[1]], col=cols[1], type="l", lwd=2.5)
     
     if(length(Blobs) >= 2){
       for(mm in 2:length(Blobs)){

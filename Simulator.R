@@ -19,16 +19,14 @@ pFuncPath <- paste("R/plottingFunctions.R", sep="/") # functions to make plots
 hFuncPath <- paste("R/helperFunctions.R", sep="/") # helper functions that are called from the simulation routine
 sFuncPath <- paste( "R/setupFunctions.R", sep="/") # functions that help set-up the simulation routine (initialze arrays, read-in data)
 statsFuncPath <- paste( "R/statsFunctions.R", sep="/") # functions that help set-up the simulation routine (initialze arrays, read-in data)
-# Not yet a function
-# hpFuncPath <- paste("R/heatmapplotFunction.R", sep="/") # functions to make plots
+
 
 source(FuncPath)
 source(pFuncPath)
 source(hFuncPath)
 source(sFuncPath)
 source(statsFuncPath)
-# Not yet a function
-# source(hpFuncPath)
+
 
 
 #################################################################
@@ -50,7 +48,7 @@ if (file.exists(figuresDir) == FALSE){
 }
 ########################
 
-Prod<-c("TimeVarying")#AutoCorr, Simple, TimeVarying
+Prod<-c("AutoCorr")#AutoCorr, Simple, TimeVarying, Survival
 Fish <- c("Fish0")#, "Fish+10", "Fish10","Fish20","Fish30","Fish40","Fish50","Fish60","Fish70","Fish80","Fish90","Fish100")
 Names <- NULL
 Scenario <- 1
@@ -70,7 +68,7 @@ for(i in 1:length(Prod)){
     # Initialize "blob"
     BlobHar <- Init.Blob(SR = Prod[i], Years = 2015:2031, HRS = Fish[j], nSims = nSims,
                          Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario[p],
-                         CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F, LNormBias=F)
+                         CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=T, LNormBias=T)
     # Load data to blob
     BlobHar$Data <- Read.Data(BlobHar)
     # Run simulations
@@ -92,7 +90,7 @@ Esc_LeadIn <- read.csv("DataIn/Escape_LeadIn.csv")
 Names <- readRDS(paste("DataOut/Scenario_Names_", Run, ".RDS", sep=""))
 
 #Can pick which Names you want
-EscapePlots.Quant(Names[1], PlotName = "TV_Current_2020to2031QuantBluezoom - No Bias Correction", nr=1, nc=1) 
+EscapePlots.Quant(Names[1], PlotName = "AC_MLE_Current_2020to2031QuantBluezoom", nr=1, nc=1) 
 #EscapePlots(Names[1], PlotName = "AutoCorr_Current_2020to2031", nr=1, nc=1) 
 
 savemeans(Names, Run)
