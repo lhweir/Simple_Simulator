@@ -20,17 +20,17 @@ SR <- read.csv("../data/Harrison_simples_Apr18.csv")
 # Compile and load all TMB models before load tmbstan -- sometimes causes problems
 # Simple Ricker
 #dyn.unload(dynlib("Ricker_simple"))
-compile("../R/Ricker_simple.cpp",libtmb=FALSE, "-O1 -g", DLLFLAGS="")
+#compile("../R/Ricker_simple.cpp",libtmb=FALSE, "-O1 -g", DLLFLAGS="")
 dyn.load(dynlib("Ricker_simple"))
 
 # Autocorr model
 #dyn.unload(dynlib("../R/Ricker_autocorr_ch"))
-compile("../R/Ricker_autocorr_ch.cpp",libtmb=FALSE, "-O1 -g", DLLFLAGS="",tracesweep = TRUE)
+#compile("../R/Ricker_autocorr_ch.cpp",libtmb=FALSE, "-O1 -g", DLLFLAGS="",tracesweep = TRUE)
 dyn.load(dynlib("../R/Ricker_autocorr_ch"))
 
 # TV alpha model
 #dyn.unload(dynlib("../R/Rickerkf_ratiovar"))
-compile("../R/Rickerkf_ratiovar.cpp",libtmb=FALSE, "-O1 -g", DLLFLAGS="",tracesweep = TRUE)
+#compile("../R/Rickerkf_ratiovar.cpp",libtmb=FALSE, "-O1 -g", DLLFLAGS="",tracesweep = TRUE)
 dyn.load(dynlib("../R/Rickerkf_ratiovar"))
 
 # load this after compile, since can mess with compiling for some reason
@@ -120,7 +120,7 @@ ggplot(SRdiagsimple) +
   theme_bw(16) + 
   scale_color_viridis_c(end = 0.8)
 
-# a few residuals close to 2
+# a few residuals close to 2 (1.81 and -1.97)
 
 #MCMC
 simpleB<-list(
@@ -251,7 +251,7 @@ ggplot(SRdiagauto) +
   theme_bw(10) +
   scale_color_viridis_c(end = 0.8)
 
-# 2 residuals more than 2 sd's away
+# 2 residuals more than 2 sd's away (-2.1 and 2.01)
 
 
 ##MCMC
@@ -382,7 +382,7 @@ ggplot(SRtimevar) +
   theme_bw(10) +
   scale_color_viridis_c(end = 0.8)
 
-# smallest residuals, nothing close to 2
+# smallest residuals, nothing above 2 (largest is -1.8)
 
 # now run as MCMC
 recursiveB<-list(
@@ -535,7 +535,7 @@ psp <- ggplot(allfits )  +
   facet_wrap(~model)  
 psp 
 
-ggsave("../Figures/Residuals_by_Spawners.pdf", plot=psp, width=11,height=7)
+ggsave("../Figures/StdResiduals_by_Spawners.pdf", plot=psp, width=11,height=7)
 
 #------------------------------------------
 # Productivity comparison with all models.
