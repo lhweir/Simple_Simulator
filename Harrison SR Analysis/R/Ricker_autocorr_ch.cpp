@@ -48,6 +48,7 @@ Type objective_function<Type>::operator() ()
   Type SigAR  = SigObs*sqrt(1-pow(rhoo,2));
   
   vector<Type> pred_logRS(timeSteps), obs_logRS(timeSteps), residuals(timeSteps), epsilon(timeSteps);
+  vector<Type> std_resids(timeSteps);
 
  
 
@@ -59,6 +60,7 @@ Type objective_function<Type>::operator() ()
   obs_logRS(0) = log(obs_R(0)/obs_S(0));
   pred_logRS(0) = a - beta * obs_S(0) ;
   residuals(0) = obs_logRS(0) - pred_logRS(0);
+  std_resids(0) = residuals(0)/SigAR;
   epsilon(0) =  residuals(0);
   
   
@@ -71,6 +73,7 @@ Type objective_function<Type>::operator() ()
      // pred_logR(i) = logRS(i) + log(obs_S(i)) + epsilon(i-1) * rhoo ;
       residuals(i) = obs_logRS(i) - pred_logRS(i);
       epsilon(i) = residuals(i);//epsilon(i-1) * rho; //+ delta(i)* sqrt(1-pow(rho,2));
+      std_resids(i) = residuals(i)/SigAR;
       
       ans+=-dnorm(obs_logRS(i),pred_logRS(i),SigAR,true);
       
@@ -96,6 +99,7 @@ Type objective_function<Type>::operator() ()
   REPORT(epsilon)
   REPORT(alpha);
   REPORT(residuals);
+  REPORT(std_resids);
   return ans;
 }
 

@@ -20,17 +20,17 @@ SR <- read.csv("../data/Harrison_simples_Apr18.csv")
 # Compile and load all TMB models before load tmbstan -- sometimes causes problems
 # Simple Ricker
 #dyn.unload(dynlib("Ricker_simple"))
-#compile("../R/Ricker_simple.cpp",libtmb=FALSE, "-O1 -g", DLLFLAGS="")
+compile("../R/Ricker_simple.cpp",libtmb=FALSE, "-O1 -g", DLLFLAGS="")
 dyn.load(dynlib("Ricker_simple"))
 
 # Autocorr model
 #dyn.unload(dynlib("../R/Ricker_autocorr_ch"))
-#compile("../R/Ricker_autocorr_ch.cpp",libtmb=FALSE, "-O1 -g", DLLFLAGS="",tracesweep = TRUE)
+compile("../R/Ricker_autocorr_ch.cpp",libtmb=FALSE, "-O1 -g", DLLFLAGS="",tracesweep = TRUE)
 dyn.load(dynlib("../R/Ricker_autocorr_ch"))
 
 # TV alpha model
 #dyn.unload(dynlib("../R/Rickerkf_ratiovar"))
-#compile("../R/Rickerkf_ratiovar.cpp",libtmb=FALSE, "-O1 -g", DLLFLAGS="",tracesweep = TRUE)
+compile("../R/Rickerkf_ratiovar.cpp",libtmb=FALSE, "-O1 -g", DLLFLAGS="",tracesweep = TRUE)
 dyn.load(dynlib("../R/Rickerkf_ratiovar"))
 
 # load this after compile, since can mess with compiling for some reason
@@ -98,6 +98,7 @@ abline(0,1)
 # Look at residuals
 SRdiagsimple <- SR
 SRdiagsimple$residuals <- obj$report()$residuals
+SRdiagsimple$std_resids <- obj$report()$std_resids
 SRdiagsimple$model <- "Simple Ricker"
 SRdiagsimple$alpha <- obj$report()$alpha
 
@@ -109,6 +110,17 @@ rp <- rp + theme_bw(16)
 rp <- rp + scale_color_viridis_c(end = 0.8)
 rp
 # clear downwards pattern
+
+# also look at std resids
+
+ggplot(SRdiagsimple) + 
+  geom_line(aes(x=BroodYear,y=std_resids),size=1.2) +
+  geom_point(aes(x=BroodYear,y=std_resids, col=std_resids),stroke=3) +
+  geom_hline(yintercept = 0) +
+  theme_bw(16) + 
+  scale_color_viridis_c(end = 0.8)
+
+# a few residuals close to 2
 
 #MCMC
 simpleB<-list(
@@ -218,10 +230,11 @@ All_Ests_ar[All_Ests_ar$Param == "Smax", c("Estimate", "Std..Error", "Lower", "U
 # compile estimates and residuals
 SRdiagauto<-SR
 SRdiagauto$residuals <- objar$report()$residuals
+SRdiagauto$std_resids <- objar$report()$std_resids
 SRdiagauto$alpha <- objar$report()$alpha
 SRdiagauto$model <- "Ricker + Autocorr. "
 
-
+# look at residuals
 rpar <- ggplot(SRdiagauto) +
      geom_line(aes(x=BroodYear,y=residuals),size=1.2) +
      geom_point(aes(x=BroodYear,y=residuals, col=residuals),stroke=3) +
@@ -229,6 +242,16 @@ rpar <- ggplot(SRdiagauto) +
     theme_bw(10) +
      scale_color_viridis_c(end = 0.8)
 rpar
+
+# look at standardized residuals
+ggplot(SRdiagauto) +
+  geom_line(aes(x=BroodYear,y=std_resids),size=1.2) +
+  geom_point(aes(x=BroodYear,y=std_resids, col=std_resids),stroke=3) +
+  geom_hline(yintercept = 0) +
+  theme_bw(10) +
+  scale_color_viridis_c(end = 0.8)
+
+# 2 residuals more than 2 sd's away
 
 
 ##MCMC
@@ -348,14 +371,18 @@ repkf<-obj_timevar$report()
 SRtimevar <-SR
 SRtimevar$model <- "Ricker + T.V. alpha"
 SRtimevar$residuals <- repkf$residuals
+SRtimevar$std_resids <- repkf$std_resids
 SRtimevar$alpha <- repkf$alpha
 
+# look at standardized residuals
+ggplot(SRtimevar) +
+  geom_line(aes(x=BroodYear,y=std_resids),size=1.2) +
+  geom_point(aes(x=BroodYear,y=std_resids, col=std_resids),stroke=3) +
+  geom_hline(yintercept = 0) +
+  theme_bw(10) +
+  scale_color_viridis_c(end = 0.8)
 
-SRdiagauto<-SR
-SRdiagauto$residuals <- obj_timevar$report()$residuals
-SRdiagauto$alpha <- objar$report()$alpha
-SRdiagauto$model <- "Ricker + Autocorr. "
-
+# smallest residuals, nothing close to 2
 
 # now run as MCMC
 recursiveB<-list(
@@ -461,7 +488,7 @@ ggsave("../Figures/TV_Model_Posts.pdf", plot=pmrb, width=10,height=7)
 # comparisons
 
 allfits <- bind_rows(SRdiagsimple, SRdiagauto, SRtimevar)
-
+#------------------
 # residuals by BY
 pp <- ggplot(allfits )  +
       geom_line(aes(x=BroodYear,y=residuals),size=1.2)  +
@@ -473,8 +500,20 @@ pp <- ggplot(allfits )  +
 pp 
 
 ggsave("../Figures/Residuals_by_BroodYear.pdf", plot=pp, width=11,height=7)
+#---------------------
+# std. residuals by BY
+pp <- ggplot(allfits )  +
+  geom_line(aes(x=BroodYear,y=std_resids),size=1.2)  +
+  geom_point(aes(x=BroodYear,y=std_resids, col=std_resids),stroke=3)  +
+  geom_hline(yintercept = 0)  +
+  theme_bw(16)  +
+  scale_color_viridis_c(end = 0.8)  +
+  facet_wrap(~model)  
+pp 
 
+ggsave("../Figures/Std_Residuals_by_BroodYear.pdf", plot=pp, width=11,height=7)
 
+#-----------------------------------------------------------
 #Residuals vs Spawners comparison over years with all models
 psp <- ggplot(allfits )  +
         geom_point(aes(x=S_adj,y=residuals, col=residuals),stroke=3)  +
@@ -486,7 +525,19 @@ psp
 
 ggsave("../Figures/Residuals_by_Spawners.pdf", plot=psp, width=11,height=7)
 
+#-----------------------------------------------------------
+# Std Residuals vs Spawners comparison over years with all models
+psp <- ggplot(allfits )  +
+  geom_point(aes(x=S_adj,y=std_resids, col=std_resids),stroke=3)  +
+  geom_hline(yintercept = 0)  +
+  theme_bw(16) + xlab("Spawners")  +
+  scale_color_viridis_c(end = 0.8)  +
+  facet_wrap(~model)  
+psp 
 
+ggsave("../Figures/Residuals_by_Spawners.pdf", plot=psp, width=11,height=7)
+
+#------------------------------------------
 # Productivity comparison with all models.
 ppa <- ggplot(allfits )  +
       geom_line(aes(x=BroodYear,y=alpha, col=model),size=1.2)  +
