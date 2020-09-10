@@ -53,6 +53,7 @@ Type objective_function<Type>::operator() ()
   vector<Type> pred_logRS(timeSteps); 
   vector<Type> obs_logRS(timeSteps);
   vector<Type> residuals(timeSteps); 
+  vector<Type> std_resids(timeSteps);
   vector<Type> alpha(timeSteps); //umsy(timeSteps), Smsy(timeSteps), ;
   
   alpha = exp(a);
@@ -79,6 +80,7 @@ Type objective_function<Type>::operator() ()
       //umsy(i) = Type(.5) *  a(i) - Type(0.07) * ( a(i) *  a(i)); 
       //Smsy(i) =   a(i)/beta * (Type(0.5) -Type(0.07) *  a(i));
       residuals(i) = obs_logRS(i) - pred_logRS(i);
+      std_resids(i) = residuals(i)/sig;
       ans+=-dnorm(obs_logRS(i),pred_logRS(i),sig,true);
     }
   
@@ -96,6 +98,7 @@ Type objective_function<Type>::operator() ()
   ADREPORT(beta);
   REPORT(alpha);
   REPORT(residuals);
+  REPORT(std_resids);
 
   return ans;
 }

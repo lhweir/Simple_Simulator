@@ -35,7 +35,7 @@ Type objective_function<Type>::operator() ()
   
   Type tau     = Type(1.0)/(SigObs*SigObs);
   
-  vector<Type> pred_logRS(timeSteps), obs_logRS(timeSteps), residuals(timeSteps); 
+  vector<Type> pred_logRS(timeSteps), obs_logRS(timeSteps), residuals(timeSteps), std_resids(timeSteps); 
   
   Type ans= Type(0);
   
@@ -45,6 +45,7 @@ Type objective_function<Type>::operator() ()
       obs_logRS(i) = log(obs_R(i)/obs_S(i)) ;
       pred_logRS(i) = a - beta * obs_S(i) ; 
       residuals(i) = obs_logRS(i) - pred_logRS(i);
+      std_resids(i) = residuals(i)/SigObs;
       ans+=-dnorm(obs_logRS(i),pred_logRS(i),SigObs,true);
     }
   
@@ -57,6 +58,7 @@ Type objective_function<Type>::operator() ()
   ADREPORT(sig);
   REPORT(pred_logRS)
   REPORT(residuals)
+  REPORT(std_resids);
   REPORT(umsy)
   REPORT(alpha)
   return ans;
