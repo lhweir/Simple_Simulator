@@ -9,7 +9,7 @@ library(viridis)
 
 results<-read.csv("Recovery_Results_DU2.csv")
 
-x.labels <- c("-50","-40","-30","-20","-10","0","+10","+20","+30")
+x.labels <- c("-50","-40","-30","-20","-10","0","+10","+20","+30","+40","+50")
 y.labels <- c("-100","-90","-80","-70","-60","-50","-40","-30","-20","-10","0","+10")
 
 
@@ -58,6 +58,10 @@ plot.data<-expand.grid(X=P.scenarios,Y=F.scenarios)
     plot.data$prodscenario[i] <- 20 }
   if (plot.data$X[i] == "30p_12yrs") {
     plot.data$prodscenario[i] <- 30 }
+  if (plot.data$X[i] == "40p_12yrs") {
+    plot.data$prodscenario[i] <- 40 }
+  if (plot.data$X[i] == "50p_12yrs") {
+    plot.data$prodscenario[i] <- 50 }
   if (plot.data$X[i] == "-10p_12yrs") {
     plot.data$prodscenario[i] <- -10 }
   if (plot.data$X[i] == "-20p_12yrs") {
@@ -145,16 +149,16 @@ for (i in 1:length(plot.data$X)) {
 
 
 
-write.csv(plot.data, "PlotdataBCF.csv")
+write.csv(plot.data, "Plotdata.csv")
 
-png("Heat Map - Upper Recovery Target-b&w.png", width=11, height = 8, units="in", res=800)
+png("Heat Map - Recovery Target-b&w.png", width=11, height = 8, units="in", res=800)
 ggplot(plot.data, aes(prodscenario, fishscenario, fill=BinsUp)) + 
   geom_tile() +
   geom_point(aes(x=0, y=0), colour="red", size=4, show.legend=FALSE)+
   scale_fill_manual(breaks=c("Extr. unlikely","Very unlikely", "Unlikely","As likely as not","Likely"),
                     labels=c("Extr. unlikely (<1%)","Very unlikely (1-10%)", "Unlikely (10-33%)","As likely as not (33-66%)","Likely (66-90%)"),
-                    values = c("black","grey15","grey43","grey70","grey96" ), name="Ability to Reach\nUpper Recovery Target")+
-  scale_x_continuous(name=c("Productivity Change"),breaks=c(-50,-40,-30,-20,-10,0,10,20,30),labels=c("-50", "-40", "-30","-20","-10","0","10","20","30"))+
+                    values = c("black","grey15","grey43","grey70","grey96" ), name="Ability to Reach\nRecovery Target")+
+  scale_x_continuous(name=c("Productivity Change"),breaks=c(-50,-40,-30,-20,-10,0,10,20,30,40,50),labels=c("-50", "-40", "-30","-20","-10","0","10","20","30","40","50"))+
   scale_y_continuous(name=c("% Change in Canadian Harvest Rates"),breaks=c(10,0,-10,-20,-30,-40,-50,-60,-70,-80,-90,-100),labels=c("10", "0", "-10","-20","-30","-40","-50","-60","-70","-80","-90","-100"))+
   theme_minimal()+
   theme(panel.background = element_blank(), panel.grid.minor = element_blank(), axis.text=element_text(size=18), 
@@ -166,14 +170,14 @@ dev.off()
 #rCB - c( "#7b3294","#c2a5cf", "#f7f7f7", "#a6dba0","#008837")
 #c( "#ef8a62","#fddbc7", "#f7f7f7", "#d1e5f0","#67a9cf")
 
-png("Heat Map - Lower Recovery Target-b&w.png", width=11, height = 8, units="in", res=800)
+png("Heat Map - Survival Target-b&w.png", width=11, height = 8, units="in", res=800)
 ggplot(plot.data, aes(prodscenario, fishscenario, fill=BinsLow)) + 
   geom_tile() +
   xlab("Productivity Change") + ylab("% Change in Canadian Fishing Related Mortality")+
-  scale_fill_manual(breaks=c("Extr. unlikely","Very unlikely", "Unlikely","As likely as not","Likely"),
-                    labels=c("Extr. unlikely (<1%)","Very unlikely (1-10%)", "Unlikely (10-33%)","As likely as not (33-66%)","Likely (66-90%)"),
-                    values = c("black","grey15","grey43","grey70","grey96"), name="Ability to Reach\nLower Recovery Target")+
-  scale_x_continuous(name=c("Productivity Change"),breaks=c(-50,-40,-30,-20,-10,0,10,20,30),labels=c("-50", "-40", "-30","-20","-10","0","10","20","30"))+
+  scale_fill_manual(breaks=c("Extr. unlikely","Very unlikely", "Unlikely","As likely as not","Likely","Very likely"),
+                    labels=c("Extr. unlikely (<1%)","Very unlikely (1-10%)", "Unlikely (10-33%)","As likely as not (33-66%)","Likely (66-90%)","Very Likely (90-99%)"),
+                    values = c("black","grey15","grey43","grey70","grey96","grey99"), name="Ability to Reach\nSurvival Target")+
+  scale_x_continuous(name=c("Productivity Change"),breaks=c(-50,-40,-30,-20,-10,0,10,20,30,40,50),labels=c("-50", "-40", "-30","-20","-10","0","10","20","30","40","50"))+
   scale_y_continuous(name=c("% Change in Canadian Harvest Rates"),breaks=c(10,0,-10,-20,-30,-40,-50,-60,-70,-80,-90,-100),labels=c("10", "0", "-10","-20","-30","-40","-50","-60","-70","-80","-90","-100"))+
   theme_minimal()+
   theme(panel.background = element_blank(), panel.grid.minor = element_blank(), axis.text=element_text(size=18), 

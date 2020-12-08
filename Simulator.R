@@ -48,14 +48,14 @@ if (file.exists(figuresDir) == FALSE){
 }
 ########################
 
-Prod<-c("AutoCorr")#AutoCorr, Simple, TimeVarying, Survival
+Prod<-c("TimeVarying")#AutoCorr, Simple, TimeVarying, Survival
 Fish <- c("Fish0")#, "Fish+10", "Fish10","Fish20","Fish30","Fish40","Fish50","Fish60","Fish70","Fish80","Fish90","Fish100")
 Names <- NULL
 Scenario <- 1
 nSims <- 10000
 Run <- "DU2"
 Depensatory <- c("Dep")
-P_Scenario <- c("0p_12yrs")#, "10p_12yrs", "-10p_12yrs", "20p_12yrs", "-20p_12yrs", "30p_12yrs", "-30p_12yrs", "-40p_12yrs", "-50p_12yrs")
+P_Scenario <- c("0p_12yrs")#, "10p_12yrs", "-10p_12yrs", "20p_12yrs", "-20p_12yrs", "30p_12yrs", "-30p_12yrs", "40p_12yrs", "-40p_12yrs", "50p_12yrs", "-50p_12yrs")
 
 # Loop over OMs (basic Ricker vs others)
 for(i in 1:length(Prod)){
@@ -68,7 +68,7 @@ for(i in 1:length(Prod)){
     # Initialize "blob"
     BlobHar <- Init.Blob(SR = Prod[i], Years = 2015:2031, HRS = Fish[j], nSims = nSims,
                          Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario[p],
-                         CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=T, LNormBias=T)
+                         CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F, LNormBias=T)
     # Load data to blob
     BlobHar$Data <- Read.Data(BlobHar)
     # Run simulations
@@ -90,10 +90,15 @@ Esc_LeadIn <- read.csv("DataIn/Escape_LeadIn.csv")
 Names <- readRDS(paste("DataOut/Scenario_Names_", Run, ".RDS", sep=""))
 
 #Can pick which Names you want
-EscapePlots.Quant(Names[1], PlotName = "AC_MLE_Current_2020to2031QuantBluezoom", nr=1, nc=1) 
-#EscapePlots(Names[1], PlotName = "AutoCorr_Current_2020to2031", nr=1, nc=1) 
+EscapePlots.Quant(Names[1], PlotName = "Scenario3_LNPar_withBCF", nr=1, nc=1) 
+#EscapePlots(Names[1], PlotName = "TV_Current_2020to2031Mean_withBCFs", nr=1, nc=1) 
+
+Names <- c("Scenario1_OrgPar_noBCF","Scenario2_LNPar_withBCF","Scenario3_OrgPar_withBCF")
+labs<- c("Scenario 1 - Original Analysis", "Scenario 2 - Correction Factor in both Est and Proj","Scenario 3 - Original Param with BCF")
+EscapePlots_4Quant(Names, PlotName = "Harrison - Various BCF Scenarios", labels=labs, nr=1, nc=3)
 
 savemeans(Names, Run)
+savemedians(Names, Run)
 
 RecoveryResults(Names, Run)
 #RecoveryResultsgeoMean(Names, Run)

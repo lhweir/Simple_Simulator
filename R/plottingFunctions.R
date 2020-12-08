@@ -532,10 +532,8 @@ EscapePlots_4 <- function(Names, PlotName, alpha, Legend_Names=NA, nr, nc){
   dev.off()
 } # End Escape Plot function
 
-EscapePlots_4Quant <- function(Names, PlotName, alpha, Legend_Names=NA, nr, nc){
+EscapePlots_4Quant <- function(Names, PlotName, labels, Legend_Names=NA, nr, nc){
   
-  # want to extract table of median change in escapment over 10 years (2016 to 2025) and 20 years (2016 to 2035)
-  # also save all blobs
   Blobs <- list()
   Escape <- list()
   for(mm in 1:length(Names)){
@@ -545,7 +543,7 @@ EscapePlots_4Quant <- function(Names, PlotName, alpha, Legend_Names=NA, nr, nc){
   
   
   #Colors -- need to plot less than 7 or not enough colors
-  cols <- c("#0000ff", "#b22222", "#7E3FCC", "#006400", "#FFC725", "#808080", "#EF29E4")
+  cols <- c("#0000ff",  "#7E3FCC", "#006400","#b22222", "#FFC725", "#808080", "#EF29E4")
   TGrey <- "#80808050"
   
   # if legend names given, use these, otherwise use scenario names
@@ -568,7 +566,7 @@ EscapePlots_4Quant <- function(Names, PlotName, alpha, Legend_Names=NA, nr, nc){
   Data <- Blobs[[1]]$Data
   
   layout(matrix(1:4, nrow = 2, byrow =T))
-  png(filename=paste("Figures/", PlotName ,".png", sep=""), width=11, height=8, units="in", res=500)
+  png(filename=paste("Figures/", PlotName ,".png", sep=""), width=17, height=8, units="in", res=500)
   par(mfrow=c(nr,nc), oma=c(2,2,2,1), mar=c(2,2,2,1))
   
   for(ss in 1:length(Data$Stocks)){
@@ -578,6 +576,7 @@ EscapePlots_4Quant <- function(Names, PlotName, alpha, Legend_Names=NA, nr, nc){
     MyQT.H <- list()
     MyQT.L5 <- list()
     MyQT.H5 <- list()
+    Mydat <- list()
     # first store all model data so can get ylims
     for(mm in 1:length(Blobs)){
       StockDat <- lapply(Escape[[mm]], "[", ,ss , ) 
@@ -587,6 +586,7 @@ EscapePlots_4Quant <- function(Names, PlotName, alpha, Legend_Names=NA, nr, nc){
       MyQT.H[[mm]] <- sapply(1:Data$NY, function(x) quantile(sapply(MyDat, "[", x), probs=c(0.975), na.rm=TRUE  ))
       MyQT.L5[[mm]] <- sapply(1:Data$NY, function(x) quantile(sapply(MyDat, "[", x), probs=c(0.75),  na.rm=TRUE  ))
       MyQT.H5[[mm]] <- sapply(1:Data$NY, function(x) quantile(sapply(MyDat, "[", x), probs=c(0.25), na.rm=TRUE  ))
+      Mydat[[mm]]<-MyDat
     } # end mod loop
     # remove initialization years if applicable
     if(Opts$Initialization == "Escapement"){
@@ -602,12 +602,10 @@ EscapePlots_4Quant <- function(Names, PlotName, alpha, Legend_Names=NA, nr, nc){
     
     # Get ylims
     if(Opts$nSims >1 ){
-      Edat <- Esc_LeadIn[which(as.character(Esc_LeadIn$StockID)==as.character(Data$Stocks[ss])),]
-      esc2019<-Edat[Edat$Year==2019,]
-      Edat <- Edat[-dim(Edat)[1],]
-      ylims <- c( 0 , max(c( unlist(MyMed) + unlist(MyQT.H), na.omit(Edat$Escape) )))
-    }
-    else {
+        Edat <- Esc_LeadIn[which(as.character(Esc_LeadIn$StockID)==as.character(Data$Stocks[ss])),]
+        Edat <- Edat[-dim(Edat)[1],]
+        ylims <- c( 0 , max(c( unlist(MyMed) + unlist(MyQT.H), na.omit(Edat$Escape) )))
+      } else {
       ylims <-  c( min(c( unlist(MyMed) )), max(c( unlist(MyMed) )))
     }  
     # get escapament init data
@@ -623,17 +621,30 @@ EscapePlots_4Quant <- function(Names, PlotName, alpha, Legend_Names=NA, nr, nc){
       
 
       polygon(y=c(MyQT.L[[mm]], rev(MyQT.H[[mm]])), 
-              x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(cols[mm], 35, sep=""), border=paste(cols[mm], 35, sep=""))
+              x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(cols[mm], 25, sep=""), border=paste(cols[mm], 25, sep=""))
       
       # Add tranparent error bars
       polygon(y=c(MyQT.L5[[mm]], rev(MyQT.H5[[mm]])), 
               x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(cols[mm], 45, sep=""), border=paste(cols[mm], 45, sep=""))
       
-      lines(Years_To_Plot, MyMed[[mm]], col=cols[mm], lwd=2.5)
-      # now add 2019 escapement
-      points(esc2019$Year,esc2019$Escape, pch=16, col="red")
+      #Now add 10 random full simulation lines
+      samples<- Mydat[[mm]][c(sample(Opts$nSims,10))]
+      lines(Years_To_Plot, samples[[1]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+      lines(Years_To_Plot, samples[[2]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+      lines(Years_To_Plot, samples[[3]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+      lines(Years_To_Plot, samples[[4]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+      lines(Years_To_Plot, samples[[5]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+      lines(Years_To_Plot, samples[[6]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+      lines(Years_To_Plot, samples[[7]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+      lines(Years_To_Plot, samples[[8]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+      lines(Years_To_Plot, samples[[9]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
+      lines(Years_To_Plot, samples[[10]][6:length(Opts$Years)], col="grey70", type="l", lwd=1, lty=2)
       
-      mtext(side=3, text=paste0(alpha[mm],"% reduction in HM Alpha"), cex=1.15)
+      lines(Years_To_Plot, MyMed[[mm]], col=cols[mm], lwd=2.5)
+      # now add 2020 escapement
+      points(2020,45000, pch=16, col="red")
+      
+      mtext(side=3, text=labels[mm], cex=1.15)
     }
     # label stock
     title(main=  Data$Stocks[ss],outer=TRUE,cex.main=1.5)

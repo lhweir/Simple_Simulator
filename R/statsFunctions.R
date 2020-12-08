@@ -420,9 +420,6 @@ savemeans <- function(Names, Run) {
     Escape[[mm]] <- Blobs[[mm]]$Sims$Escape
   }
   
-  # read in the actual escapement data
-  Esc_dat <- read.csv("DataIn/Escape_LeadIn.csv")
-  
   # For each stock, model, sim and Age get mean harvest rates 
   Stock <- Blobs[[1]]$Data$Stocks
   NY <- Blobs[[1]]$Data$NY
@@ -450,6 +447,45 @@ savemeans <- function(Names, Run) {
   
   write.csv(Means,paste("DataOut/Means_",Run ,".csv", sep=""))
 
+}
+
+
+savemedians <- function(Names, Run) {
+  
+  Blobs <- list()
+  Escape <- list()
+  for(mm in 1:length(Names)){
+    Blobs[[mm]] <- readRDS(paste("DataOut/", Names[mm], ".rds", sep=""))
+    Escape[[mm]] <- Blobs[[mm]]$Sims$Escape
+  }
+  
+  # For each stock, model, sim and Age get mean harvest rates 
+  Stock <- Blobs[[1]]$Data$Stocks
+  NY <- Blobs[[1]]$Data$NY
+  Age <- Blobs[[1]]$Data$Ages
+  Years <- Blobs[[1]]$Options$Years
+  nSims <- Blobs[[1]]$Options$nSims
+  
+  # Make data frame summarizing differences
+  #MeansDF <- data.frame(Stock=character(), Model=character(), Escape=numeric())
+  
+  MyMedian <- list()
+  #MySD <- list()
+  
+  for(mm in 1:length(Names)){
+    StockDat <- lapply(Escape[[mm]], "[", , 1 , ) 
+    MyDat <- lapply(1:length(StockDat), function(x) apply(StockDat[[x]], 1, sum) )
+    MyMedian[[mm]] <-  sapply(1:NY, function(x) median(sapply(MyDat, "[", x) ))
+    #MySD[[mm]] <- sapply(1:Data$NY, function(x) sd(sapply(MyDat, "[", x) ))
+  } # end mod loop
+  
+  medians.table<- list.cbind(MyMedian)
+  colnames(medians.table)<-Names
+  Medians <- cbind(Years,medians.table)
+  
+  
+  write.csv(Medians,paste("DataOut/Medians_",Run ,".csv", sep=""))
+  
 }
 
 ##########################################################
@@ -498,9 +534,9 @@ RecoveryResults <-function(Names, Run) {
          
       abund <- mean(rowSums((Blobs[[mm]]$Sims$Escape[[ss]][a.yrs:length(Years),,])))
          
-      low_pc <- ifelse(p.change >= 0,1,0)
+      low_pc <- ifelse(p.change >= -0.3,1,0)
       low_esc <- ifelse(abund >= Blobs[[mm]]$Data$StocksInfo$Low_Esc,1,0)
-      up_pc <- ifelse(p.change >= 0,1,0)
+      up_pc <- ifelse(p.change < -0.3,0,1)
       up_esc <- ifelse(abund >= Blobs[[mm]]$Data$StocksInfo$Up_Esc,1,0)
       Low_RT <- ifelse(low_esc ==1 & low_pc ==1, 1, 0)
       Upp_RT <- ifelse(up_esc ==1 & up_pc ==1, 1,0)

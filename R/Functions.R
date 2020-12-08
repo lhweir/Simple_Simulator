@@ -665,11 +665,11 @@ Get.Recruitment <- function(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var
     
     # Add Variability
       SD_Total <- StocksInfo$Sigma[which(StocksInfo$StockID==Stocks[ss])]
+      rho <- StocksInfo$rho[which(StocksInfo$StockID==Stocks[ss])]
       
       if(Var==T){
         if(AutoCorr == T){
           
-          rho <- StocksInfo$rho[which(StocksInfo$StockID==Stocks[ss])] 
           E_0 <- StocksInfo$E_0[which(StocksInfo$StockID==Stocks[ss])] 
           
           SD_AR <- StocksInfo$Sigma_AR[which(StocksInfo$StockID==Stocks[ss])]
@@ -696,7 +696,11 @@ Get.Recruitment <- function(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var
           
           # Multiply Recruitment by this value
           if(LNormBias == T){ 
-            R <- R*exp(E_R -(SD_Total^2)/2)
+            
+            E_obs <-sqrt(rho)*SD_Total
+            
+            R <- R*exp(E_R - (E_obs^2)/2)
+            
           } else {
             R <- R*exp(E_R)
           }
