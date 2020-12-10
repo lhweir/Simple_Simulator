@@ -475,6 +475,12 @@ deriv_posteriorsrb <- data.frame(chains=rep(recrsdf$chains[recrsdf$parameters=="
                                parameters = rep(c("a[avg]","b","sigma[tot]","rho"),each=length(hista_rb)),
                                value = c(a_avg_post$a_avg, beta_rb, sigtot, rho_rb) )
 
+# put posterior draws in wide format data frame and save
+deriv_posteriorsrb_wide<-data.frame("iteration" = 1:length(a_avg_post$a_avg), "alpha.avg" = exp(a_avg_post$a_avg),
+                                     "b"=beta_rb,"sigma.tot" = sigtot, "rho"=rho_rb)
+write.csv(deriv_posteriorsrb_wide, "Harrison_SR_Analysis/DataOut/TimeVar_Ests_LN_fullPosterior.csv")
+
+
 pmrb <- ggplot(deriv_posteriorsrb) +
        geom_density(aes(x=value, color=chains), size=1.2) +
        facet_wrap(~parameters, scales="free",labeller = label_parsed) +
