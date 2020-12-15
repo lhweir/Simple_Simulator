@@ -36,7 +36,8 @@
 
 # Initialize simulation run with options
 Init.Blob <- function(Name, SR, BM, Initialization, Years, HRS, EV_Type, nSims, Prod_Scenario,
-                       CC_Scenario,  Smolts_Scenario, Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr, LNormBias) {
+                       CC_Scenario,  Smolts_Scenario, Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, 
+                       AutoCorr, LNormBias, samplePosterior=F) {
   Blob <- list()
   Blob$Options <- list()
   # Add options
@@ -56,6 +57,7 @@ Init.Blob <- function(Name, SR, BM, Initialization, Years, HRS, EV_Type, nSims, 
   Blob$Options$BigBar <- BigBar
   Blob$Options$AutoCorr <- AutoCorr
   Blob$Options$LNormBias <- LNormBias
+  Blob$Options$samplePosterior <- samplePosterior
   Blob
 }
 
@@ -99,9 +101,10 @@ Read.Data <- function(Blob, FolderPath="DataIn"){
   if(Data$Stocks != "Harrison") {
   SR_File <- read.csv(paste(FolderPath, "/SR_Params/HabModel_SR.csv", sep=""))
   SR_Dat <- SR_File[SR_File$Reduction == Blob$Options$SR, ]}
-  
+
   if(Data$Stocks == "Harrison") {
-    SR_Dat <- read.csv(paste(FolderPath, "/SR_Params/", Blob$Options$SR, "_SR.csv", sep=""))}
+      SR_Dat <- read.csv(paste(FolderPath, "/SR_Params/", Blob$Options$SR, "_SR.csv", sep=""))
+  }
   
   BM_Dat <- read.csv(paste(FolderPath, "/Benchmarks/", Blob$Options$BM, "_BM.csv", sep=""))
 
@@ -113,17 +116,22 @@ Read.Data <- function(Blob, FolderPath="DataIn"){
   # Now add to StocksInfo file
   Data$StocksInfo <-  StocksInfo %>% left_join( SR_Dat, by="StockID") %>% left_join( BM_Dat, by="StockID")
 
+  # Add joint posterior from SR estimation if full posterior is required
+  if (Blob$Options$samplePosterior == TRUE) {
+    Data$SR_Post <- read.csv(paste(FolderPath, "/SR_Params/", Blob$Options$SR, "_SR_fullPosterior.csv", sep=""))
+  }
+  
   # Now read in multipliers for productivity/CC scenario and create data frame
   Prod_Mults <- data.frame(Year = Blob$Options$Year, Mult=1)
   CC_Mults <- data.frame(Year = Blob$Options$Year, Mult=1)
   # If not scenario where mult=1, fill in
   if(Blob$Options$Prod_Scenario != 1){
-    Prod_DF <- read.csv(paste("DataIn/Productivity_Change/",Blob$Options$Prod_Scenario, ".csv", sep=""))
+    Prod_DF <- read.csv(paste(FolderPath,"/Productivity_Change/",Blob$Options$Prod_Scenario, ".csv", sep=""))
     # Merge with Prod_Mults
     Prod_Mults$Mult[which(Prod_Mults$Year %in% Prod_DF$Year)] <- Prod_DF$Mult
   }
   if(Blob$Options$CC_Scenario != 1){
-    CC_DF <- read.csv(paste("DataIn/CC_Change/",Blob$Options$CC_Scenario, ".csv", sep=""))
+    CC_DF <- read.csv(paste(FolderPath,"/CC_Change/",Blob$Options$CC_Scenario, ".csv", sep=""))
     # Merge with CC_Mults
     CC_Mults$Mult[which(CC_Mults$Year %in% CC_DF$Year)] <- CC_DF$Mult
   }

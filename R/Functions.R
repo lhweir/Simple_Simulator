@@ -652,21 +652,44 @@ Get.Recruitment <- function(Opts, Data, Years, Stocks, Ages, MaxAge, ss, yy, Var
   #~~~~~~~~~~~~~~~~~~~~~~~~~~
   # If compute SR = 0 & Truncate = 1, then use true Ricker relationship with Ricker b parameter from the input file
   if (StocksInfo$Type[which(StocksInfo$StockID==Stocks[ss])] == "Natural") {
+      
+    if (Opts$samplePosterior == F) {
       a <- StocksInfo$Ricker_A[which(StocksInfo$StockID== as.character(Stocks[ss]))] * Prod_Mults$Mult[which(Prod_Mults$Year == Years[yy])]
       # extract b from input data
       b <- StocksInfo$Ricker_B[which(StocksInfo$StockID==Stocks[ss])] / CC_Mults$Mult[which(CC_Mults$Year == Years[yy])]
       # calculate recruitment
       R <- a*Spawners[yy,ss] * exp(-b*Spawners[yy,ss])
+      # Variability
+      SD_Total <- StocksInfo$Sigma[which(StocksInfo$StockID==Stocks[ss])]
+      rho <- StocksInfo$rho[which(StocksInfo$StockID==Stocks[ss])]
+    }
+    
+    if (Opts$samplePosterior == T) {
+      
+      iter<-sample(1:nrow(Data$SR_Post),1)
+  
+      # extract a and b from input data
+      alpha.ref<-Data$SR_Post[Data$SR_Post$StockID==Stocks[ss] & Data$SR_Post$iteration == iter,"alpha.avg"]
+      b.ref<-Data$SR_Post[Data$SR_Post$StockID==Stocks[ss] & Data$SR_Post$iteration == iter,"b"]
+        
+      # adjust, depending on scenario
+      a <- alpha.ref * Prod_Mults$Mult[which(Prod_Mults$Year == Years[yy])]
+      b <-  b.ref / CC_Mults$Mult[which(CC_Mults$Year == Years[yy])]
+      
+      # calculate recruitment
+      R <- a*Spawners[yy,ss] * exp(-b*Spawners[yy,ss])
+      
+      # Variability
+      SD_Total <- Data$SR_Post[Data$SR_Post$StockID==Stocks[ss] & Data$SR_Post$iteration == iter,"sigma.tot"]
+      rho <- Data$SR_Post[Data$SR_Post$StockID==Stocks[ss] & Data$SR_Post$iteration == iter,"rho"]
+      
+    }
     
      # Add in Depensatory effect if wanted
     if (Dep == "yes"){
       R <- (Spawners[yy,ss]/(Spawners[yy,ss]+1000))*R
     }
     
-    # Add Variability
-      SD_Total <- StocksInfo$Sigma[which(StocksInfo$StockID==Stocks[ss])]
-      rho <- StocksInfo$rho[which(StocksInfo$StockID==Stocks[ss])]
-      
       if(Var==T){
         if(AutoCorr == T){
           

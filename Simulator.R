@@ -7,7 +7,7 @@
 # Clear environment
 rm(list=ls())
 
-setwd("C:/Users/WeirL/Documents/GitHub/Simple_Simulator")
+#setwd("C:/Users/WeirL/Documents/GitHub/Simple_Simulator")
 
 # Load required packages
 library(dplyr)
@@ -32,8 +32,9 @@ source(statsFuncPath)
 #################################################################
 # DU 2 Harrison
 #################################################################
-setwd("C:/Users/WeirL/Documents/GitHub/Simple_Simulator/DU2")
+#setwd("C:/Users/WeirL/Documents/GitHub/Simple_Simulator/DU2")
 
+setwd("C:/gitHub/Simple_Simulator/DU2")
 
 # Create DataOut directory if it doesn't yet exist
 outputDir <- paste0("DataOut")
@@ -53,6 +54,7 @@ Fish <- c("Fish0")#, "Fish+10", "Fish10","Fish20","Fish30","Fish40","Fish50","Fi
 Names <- NULL
 Scenario <- 1
 nSims <- 10000
+#nSims<-100
 Run <- "DU2"
 Depensatory <- c("Dep")
 P_Scenario <- c("0p_12yrs")#, "10p_12yrs", "-10p_12yrs", "20p_12yrs", "-20p_12yrs", "30p_12yrs", "-30p_12yrs", "40p_12yrs", "-40p_12yrs", "50p_12yrs", "-50p_12yrs")
@@ -66,11 +68,18 @@ for(i in 1:length(Prod)){
     Names[Scenario] <- paste(Scenario, Prod[i], Fish[j], P_Scenario[p], Run, sep="_")
     print(Names[Scenario])
     # Initialize "blob"
-    BlobHar <- Init.Blob(SR = Prod[i], Years = 2015:2031, HRS = Fish[j], nSims = nSims,
-                         Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario[p],
-                         CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F, LNormBias=T)
+     BlobHar <- Init.Blob(SR = Prod[i], Years = 2015:2031, HRS = Fish[j], nSims = nSims,
+                          Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario[p],
+                          CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
+                          LNormBias=T, samplePosterior = T)
+    
+     # BlobHar <- Init.Blob(SR = Prod[i], Years = 2015:2031, HRS = Fish[j], nSims = nSims,
+     #                      Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario[p],
+     #                      CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
+     #                      LNormBias=F, samplePosterior = F)
+    
     # Load data to blob
-    BlobHar$Data <- Read.Data(BlobHar)
+    BlobHar$Data <- Read.Data(BlobHar,FolderPath="DataIn")
     # Run simulations
     BlobHar$Sims <- Run.CN.MSE.Sim(BlobHar)
     # Save blob
@@ -83,7 +92,7 @@ for(i in 1:length(Prod)){
 } # end OM loop
 
 # save list of names for this run
-saveRDS(Names, paste("DataOut/Scenario_Names_", Run, ".RDS", sep=""))
+saveRDS(Names, paste("DataOut/Scenario_Names_", Run, "_noLN.RDS", sep=""))
 
 #Need to read in Escapment Lead in and Names for plotting
 Esc_LeadIn <- read.csv("DataIn/Escape_LeadIn.csv")
@@ -91,6 +100,7 @@ Names <- readRDS(paste("DataOut/Scenario_Names_", Run, ".RDS", sep=""))
 
 #Can pick which Names you want
 EscapePlots.Quant(Names[1], PlotName = "Scenario3_LNPar_withBCF", nr=1, nc=1) 
+#EscapePlots.Quant(Names[1], PlotName = "Scenario1_noLN_withoutBCF", nr=1, nc=1)
 #EscapePlots(Names[1], PlotName = "TV_Current_2020to2031Mean_withBCFs", nr=1, nc=1) 
 
 Names <- c("Scenario1_OrgPar_noBCF","Scenario2_LNPar_withBCF","Scenario3_OrgPar_withBCF")
