@@ -12,26 +12,29 @@ library(reshape)
 library(dplyr)
 library(TMBhelper)
 
-source("TMB_functions.R")
+#source("TMB_functions.R")
+source("Harrison_SR_Analysis/R/TMB_functions.R")
 
 #read in simple data set
-SR <- read.csv("../data/Harrison_simples_Apr18.csv")
+#SR <- read.csv("../data/Harrison_simples_Apr18.csv")
+SR <- read.csv("Harrison_SR_Analysis/data/Harrison_simples_Apr18.csv")
 
 # Compile and load all TMB models before load tmbstan -- sometimes causes problems
 # Simple Ricker
 #dyn.unload(dynlib("Ricker_simple"))
 #compile("../R/Ricker_simple.cpp",libtmb=FALSE, "-O1 -g", DLLFLAGS="")
-dyn.load(dynlib("Ricker_simple"))
+dyn.load(dynlib("Harrison_SR_Analysis/R/Ricker_simple"))
 
 # Autocorr model
 #dyn.unload(dynlib("../R/Ricker_autocorr_ch"))
 #compile("../R/Ricker_autocorr_ch.cpp",libtmb=FALSE, "-O1 -g", DLLFLAGS="",tracesweep = TRUE)
-dyn.load(dynlib("../R/Ricker_autocorr_ch"))
+#dyn.load(dynlib("../R/Ricker_autocorr_ch"))
+dyn.load(dynlib("Harrison_SR_Analysis/R/Ricker_autocorr_ch"))
 
 # TV alpha model
 #dyn.unload(dynlib("../R/Rickerkf_ratiovar"))
 #compile("../R/Rickerkf_ratiovar.cpp",libtmb=FALSE, "-O1 -g", DLLFLAGS="",tracesweep = TRUE)
-dyn.load(dynlib("../R/Rickerkf_ratiovar"))
+dyn.load(dynlib("Harrison_SR_Analysis/R/Rickerkf_ratiovar"))
 
 # load this after compile, since can mess with compiling for some reason
 library(tmbstan)
@@ -468,7 +471,19 @@ timevar_par<-data.frame(parameters=c("a_[2010]","a_[2011]","a_[2012]","a_[2013]"
                                quantile(rho_rb, probs=0.975), 
                                quantile(sigtot, probs=0.975)))
 
-write.csv(timevar_par, "../DataOut/TimeVar_Ests.csv")
+write.csv(timevar_par, "Harrison_SR_Analysis/DataOut/TimeVar_Ests.csv")
+
+
+# collect posteriors to plot
+deriv_posteriorsrb <- data.frame(chains=rep(recrsdf$chains[recrsdf$parameters=="logbeta"],4),
+                                 parameters = rep(c("a[avg]","b","sigma[tot]","rho"),each=length(hista_rb)),
+                                 value = c(a_avg_post$a_avg, beta_rb, sigtot, rho_rb) )
+
+# put posterior draws in wide format data frame and save
+deriv_posteriorsrb_wide<-data.frame("iteration" = 1:length(a_avg_post$a_avg), "alpha.avg" = exp(a_avg_post$a_avg),
+                                    "b"=beta_rb,"sigma.tot" = sigtot, "rho"=rho_rb)
+write.csv(deriv_posteriorsrb_wide, "Harrison_SR_Analysis/DataOut/TimeVaring_SR_fullPosterior.csv")
+
 
 # collect posteriors to plot
 deriv_posteriorsrb <- data.frame(chains=rep(recrsdf$chains[recrsdf$parameters=="logbeta"],4),

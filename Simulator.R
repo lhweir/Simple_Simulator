@@ -49,12 +49,89 @@ if (file.exists(figuresDir) == FALSE){
 }
 ########################
 
+#======================================================================================
+# Temporary code for testing posterior sampling
+
+Prod<-"TimeVarying"
+Fish <- "Fish0"
+Names <- NULL
+nSims <- 10000
+Depensatory <- "Dep"
+P_Scenario <- "0p_12yrs"
+
+# Scenario 1: Sample from posterior estimated without LN Bias Correction; Projections with bias correction
+Scenario <- 1
+Run <- "DU2_postNoBC_projBC"
+Names[Scenario] <- paste(Scenario, Prod, Fish, P_Scenario, Run, sep="_")
+
+BlobHar <- Init.Blob(SR = Prod, Years = 2015:2031, HRS = Fish, nSims = nSims,
+                     Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario,
+                     CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
+                     LNormBias=T, samplePosterior = T)
+
+# Load data to blob
+BlobHar$Data <- Read.Data(BlobHar,FolderPath="DataIn")
+# Run simulations
+BlobHar$Sims <- Run.CN.MSE.Sim(BlobHar)
+# Save blob
+Save.Blob(BlobHar)
+
+# Scenario 2: Median estimated without LN Bias Correction; Projections without bias correction
+Scenario <- 2
+Run <- "DU2_medNoBC_projNoBC"
+Names[Scenario] <- paste(Scenario, Prod, Fish, P_Scenario, Run, sep="_")
+
+BlobHar <- Init.Blob(SR = Prod, Years = 2015:2031, HRS = Fish, nSims = nSims,
+                     Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario,
+                     CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
+                     LNormBias=F, samplePosterior = F)
+
+# Load data to blob
+BlobHar$Data <- Read.Data(BlobHar,FolderPath="DataIn")
+# Run simulations
+BlobHar$Sims <- Run.CN.MSE.Sim(BlobHar)
+# Save blob
+Save.Blob(BlobHar)
+
+# Scenario 3: Median estimated without LN Bias Correction; Projections with bias correction
+Scenario <- 3
+Run <- "DU2_medNoBC_projBC"
+Names[Scenario] <- paste(Scenario, Prod, Fish, P_Scenario, Run, sep="_")
+
+BlobHar <- Init.Blob(SR = Prod, Years = 2015:2031, HRS = Fish, nSims = nSims,
+                     Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario,
+                     CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
+                     LNormBias=T, samplePosterior = F)
+
+
+# Load data to blob
+BlobHar$Data <- Read.Data(BlobHar,FolderPath="DataIn")
+# Run simulations
+BlobHar$Sims <- Run.CN.MSE.Sim(BlobHar)
+# Save blob
+Save.Blob(BlobHar)
+
+
+
+# Compare two scenarios
+EscapePlotsPercentiles_Compare(c(Names[1],Names[3]), PlotName="Harrison - Bias correction comparison - percentiles", Stock = "Harrison", Legend_Names = c("PostNoBC_projBC", "MedNoBC_projBC"))
+EscapePlots_Compare(c(Names[1],Names[3]), PlotName="Harrison - Bias correction comparison", Stock = "Harrison", Legend_Names = c("PostNoBC_projBC", "MedNoBC_projBC"))
+
+
+
+checkNSims (Names, perfMetric = "EscapeChange") 
+
+# End of temporary code for posterior method  ===========================================
+
+
+
+#####################################################
+
 Prod<-c("TimeVarying")#AutoCorr, Simple, TimeVarying, Survival
 Fish <- c("Fish0")#, "Fish+10", "Fish10","Fish20","Fish30","Fish40","Fish50","Fish60","Fish70","Fish80","Fish90","Fish100")
 Names <- NULL
 Scenario <- 1
-nSims <- 10000
-#nSims<-100
+nSims <- 100
 Run <- "DU2"
 Depensatory <- c("Dep")
 P_Scenario <- c("0p_12yrs")#, "10p_12yrs", "-10p_12yrs", "20p_12yrs", "-20p_12yrs", "30p_12yrs", "-30p_12yrs", "40p_12yrs", "-40p_12yrs", "50p_12yrs", "-50p_12yrs")
@@ -68,15 +145,15 @@ for(i in 1:length(Prod)){
     Names[Scenario] <- paste(Scenario, Prod[i], Fish[j], P_Scenario[p], Run, sep="_")
     print(Names[Scenario])
     # Initialize "blob"
-     BlobHar <- Init.Blob(SR = Prod[i], Years = 2015:2031, HRS = Fish[j], nSims = nSims,
+      BlobHar <- Init.Blob(SR = Prod[i], Years = 2015:2031, HRS = Fish[j], nSims = nSims,
                           Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario[p],
                           CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
                           LNormBias=T, samplePosterior = T)
     
-     # BlobHar <- Init.Blob(SR = Prod[i], Years = 2015:2031, HRS = Fish[j], nSims = nSims,
-     #                      Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario[p],
-     #                      CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
-     #                      LNormBias=F, samplePosterior = F)
+      # BlobHar <- Init.Blob(SR = Prod[i], Years = 2015:2031, HRS = Fish[j], nSims = nSims,
+      #                      Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario[p],
+      #                      CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
+      #                      LNormBias=F, samplePosterior = F)
     
     # Load data to blob
     BlobHar$Data <- Read.Data(BlobHar,FolderPath="DataIn")
@@ -92,7 +169,7 @@ for(i in 1:length(Prod)){
 } # end OM loop
 
 # save list of names for this run
-saveRDS(Names, paste("DataOut/Scenario_Names_", Run, "_noLN.RDS", sep=""))
+saveRDS(Names, paste("DataOut/Scenario_Names_", Run, ".RDS", sep=""))
 
 #Need to read in Escapment Lead in and Names for plotting
 Esc_LeadIn <- read.csv("DataIn/Escape_LeadIn.csv")
@@ -102,6 +179,7 @@ Names <- readRDS(paste("DataOut/Scenario_Names_", Run, ".RDS", sep=""))
 EscapePlots.Quant(Names[1], PlotName = "Scenario3_LNPar_withBCF", nr=1, nc=1) 
 #EscapePlots.Quant(Names[1], PlotName = "Scenario1_noLN_withoutBCF", nr=1, nc=1)
 #EscapePlots(Names[1], PlotName = "TV_Current_2020to2031Mean_withBCFs", nr=1, nc=1) 
+
 
 Names <- c("Scenario1_OrgPar_noBCF","Scenario2_LNPar_withBCF","Scenario3_OrgPar_withBCF")
 labs<- c("Scenario 1 - Original Analysis", "Scenario 2 - Correction Factor in both Est and Proj","Scenario 3 - Original Param with BCF")

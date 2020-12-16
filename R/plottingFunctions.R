@@ -7,7 +7,9 @@
 # Plot functions included in this file:
 # ================================================================================================
 # CohortPlots ()              - plots cohort abundance trajectories at age and by stock fr one or more scenarios  
-# EscapePlots ()              - plots escapement trajectories by stock for one or more scenarios
+# EscapePlots ()              - plots escapement trajectories (mean +/- SD) by stock for one or more scenarios
+# EscapePlots_Compare ()      - plots escapement trajectories (mean +/- SD) from multiple scenarios on one plot 
+# EscapePlotsPercentiles_Compare () - plots escapement trajectories from multiple scenarios on one plot with pre-specified percentiles
 # EscapePlots_4 ()            - plots escapement trajectories by stock for one or more alpha scenarios
 # Escape_4_Panel ()           - plots escapement trajectories across scenarios
 # PlotEscapeChange()          - dot and line plots showing the ratio of change in escapement (future:recent)
@@ -260,6 +262,13 @@ EscapePlots <- function(Names, PlotName, LeadIn = T, Legend_Names=NA, nr, nc){
   dev.off()
 } # End Escape Plot function
 
+
+
+
+
+
+
+
 EscapePlots.Quant <- function(Names, PlotName, LeadIn = T, Legend_Names=NA, nr, nc){
   
   # want to extract table of median change in escapment over 10 years (2016 to 2025) and 20 years (2016 to 2035)
@@ -409,6 +418,254 @@ EscapePlots.Quant <- function(Names, PlotName, LeadIn = T, Legend_Names=NA, nr, 
   dev.off()
 } # End Escape Plot function
 
+
+###########################################################
+#  EscapePlots_Compare
+#######################################################
+# Purpose: Plots escapement trajectory for a single stock for one or more scenarios
+#             (note: if using > 1 scenario, escapement trajectories for each scnenario will be shown in the same plot) 
+# Arguments: 
+################################################################
+
+EscapePlots_Compare <- function(Names, PlotName, Stock, Legend_Names=NA){
+  # want to extract table of median change in escapment over 10 years (2016 to 2025) and 20 years (2016 to 2035)
+  # also save all blobs
+  Blobs <- list()
+  Escape <- list()
+  for(mm in 1:length(Names)){
+    Blobs[[mm]] <- readRDS(paste("DataOut/", Names[mm], ".rds", sep=""))
+    Escape[[mm]] <- Blobs[[mm]]$Sims$Escape
+  }
+  
+  #Colors -- need to plot less than 7 or not enough colors
+  cols <- c("#0000ff", "#b22222", "#7E3FCC", "#006400", "#FFC725", "#808080", "#EF29E4")
+  TGrey <- "#80808050"
+  
+  # if legend names given, use these, otherwise use scenario names
+  if(is.na(Legend_Names[1])){
+    Legend_Names <- Names
+  }
+  
+  # also read in "leadin" escapement data
+  Esc_LeadIn <- read.csv("DataIn/Escape_LeadIn.csv")
+  Esc_LeadIn <- Esc_LeadIn[Esc_LeadIn$StockID=="Harrison",]
+  
+  # Get require info from first blob, assume they are the same
+  Opts <- Blobs[[1]]$Options
+  Data <- Blobs[[1]]$Data
+  
+  
+  MyMean <- list()
+  MySD <- list()
+  
+  # first store all model data so can get ylims
+  for(mm in 1:length(Blobs)){
+  
+    StockDat <- lapply(Escape[[mm]], "[", ,1 , )  # Index 1 is for stock 1; assumes only one stock in projections
+    MyDat <- lapply(1:length(StockDat), function(x) apply(StockDat[[x]], 1, sum) )
+    MyMean[[mm]] <-  sapply(1:Data$NY, function(x) mean(sapply(MyDat, "[", x),na.rm=TRUE ))
+    MySD[[mm]] <- sapply(1:Data$NY, function(x) sd(sapply(MyDat, "[", x),  na.rm=TRUE  ))
+    
+  } # end mod loop
+  # remove initialization years if applicable
+  if(Opts$Initialization == "Escapement"){
+    Years_To_Plot <- Opts$Years[-(1:Data$MaxAge)]
+    MyMean <- lapply(MyMean, "[", which(Opts$Years %in% Years_To_Plot))
+    MySD <- lapply(MySD, "[", which(Opts$Years %in% Years_To_Plot))
+  } else {
+    Years_To_Plot <- Opts$Years
+  }
+  
+  # Get ylims
+  if(Opts$nSims >1 ){
+    Edat <- Esc_LeadIn[which(as.character(Esc_LeadIn$StockID)==Stock),]
+    esc2019<-Edat[Edat$Year==2019,]
+    Edat <- Edat[-dim(Edat)[1],]
+    ylims <- c( 0 , max(c( unlist(MyMean) + unlist(MySD), na.omit(Edat$Escape) )))
+  }
+  else {
+    ylims <-  c( min(c( unlist(MyMean) )), max(c( unlist(MyMean) )))
+  }  
+  # get escapament init data
+  Edat_Init <- Data$Escapement[which(Data$Escapement$StockID==Stock),] 
+  
+  # Plot
+  png(paste("Figures/", PlotName ,".png", sep=""), width=8, height = 8, units="in", res=500)
+  
+  for(mm in 1:length(Blobs)){
+    
+    if (mm == 1) {
+    
+      plot(Edat$Year, Edat$Escape, col="darkgrey", type="l", ylim=ylims, 
+           xlim=c(min(Edat$Year),max(Opts$Years)), ylab = "Escapement", xlab = "Year", lwd=2)
+      # now add initialization data
+      lines(Edat_Init$Year, Edat_Init$Abundance, col="black", lwd=2)
+    
+      # now add 2019 escapement
+      points(esc2019$Year,esc2019$Escape, pch=16, col="red")
+    
+      lines(Years_To_Plot, MyMean[[mm]], col=cols[mm], lwd=2.5)
+     
+      # Add tranparent error bars
+      polygon(y=c(MyMean[[mm]] - MySD[[mm]], rev(MyMean[[mm]] + MySD[[mm]])), 
+            x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(cols[mm], 50, sep=""), border=cols[mm])
+      
+      
+    }
+    
+    
+    if (mm > 1) {
+      
+      lines(Years_To_Plot, MyMean[[mm]], col=cols[mm], lwd=2.5)
+      # Add tranparent error bars
+      polygon(y=c(MyMean[[mm]] - MySD[[mm]], rev(MyMean[[mm]] + MySD[[mm]])), 
+              x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(cols[mm], 50, sep=""), border=cols[mm])
+    }
+    
+  } # end of loop over Blobs
+    
+  
+  
+  if(length(Blobs) >= 2){
+      legend("topright", fill=c(cols[1:(length(Blobs))]), legend=Legend_Names)
+    } # and more than one model if
+  
+  
+  dev.off()
+  
+  
+}
+
+
+
+###########################################################
+#  EscapePlotsPercentiles_Compare
+#######################################################
+# Purpose: Plots escapement trajectory for a single stock for one or more scenarios
+#             (note: if using > 1 scenario, escapement trajectories for each scnenario will be shown in the same plot) 
+# Arguments: 
+################################################################
+
+EscapePlotsPercentiles_Compare <- function(Names, PlotName, Stock, Legend_Names=NA, percentiles=c(0.10, 0.50, 0.90)){
+  # want to extract table of median change in escapment over 10 years (2016 to 2025) and 20 years (2016 to 2035)
+  # also save all blobs
+  Blobs <- list()
+  Escape <- list()
+  for(mm in 1:length(Names)){
+    Blobs[[mm]] <- readRDS(paste("DataOut/", Names[mm], ".rds", sep=""))
+    Escape[[mm]] <- Blobs[[mm]]$Sims$Escape
+  }
+  
+  #Colors -- need to plot less than 7 or not enough colors
+  cols <- c("#0000ff", "#b22222", "#7E3FCC", "#006400", "#FFC725", "#808080", "#EF29E4")
+  TGrey <- "#80808050"
+  
+  # if legend names given, use these, otherwise use scenario names
+  if(is.na(Legend_Names[1])){
+    Legend_Names <- Names
+  }
+  
+  # also read in "leadin" escapement data
+  Esc_LeadIn <- read.csv("DataIn/Escape_LeadIn.csv")
+  Esc_LeadIn <- Esc_LeadIn[Esc_LeadIn$StockID=="Harrison",]
+  
+  # Get require info from first blob, assume they are the same
+  Opts <- Blobs[[1]]$Options
+  Data <- Blobs[[1]]$Data
+  
+  
+  MyMed <- list()
+  MyLower <- list()
+  MyUpper <- list()
+  
+  # first store all model data so can get ylims
+  for(mm in 1:length(Blobs)){
+    
+    StockDat <- lapply(Escape[[mm]], "[", ,1 , )  # Index 1 is for stock 1; assumes only one stock in projections
+    MyDat <- lapply(1:length(StockDat), function(x) apply(StockDat[[x]], 1, sum) )
+    MyMed[[mm]] <-  sapply(1:Data$NY, function(x) quantile(sapply(MyDat, "[", x),probs=percentiles[2], na.rm=TRUE ))
+    MyLower[[mm]] <- sapply(1:Data$NY, function(x) quantile(sapply(MyDat, "[", x),  probs=percentiles[1], na.rm=TRUE  ))
+    MyUpper[[mm]] <- sapply(1:Data$NY, function(x) quantile(sapply(MyDat, "[", x),  probs=percentiles[3], na.rm=TRUE  ))
+    
+  } # end mod loop
+  # remove initialization years if applicable
+  if(Opts$Initialization == "Escapement"){
+    Years_To_Plot <- Opts$Years[-(1:Data$MaxAge)]
+    MyMed <- lapply(MyMed, "[", which(Opts$Years %in% Years_To_Plot))
+    MyLower <- lapply(MyLower, "[", which(Opts$Years %in% Years_To_Plot))
+    MyUpper <- lapply(MyUpper, "[", which(Opts$Years %in% Years_To_Plot))
+  } else {
+    Years_To_Plot <- Opts$Years
+  }
+  
+  # Get ylims
+  if(Opts$nSims >1 ){
+    Edat <- Esc_LeadIn[which(as.character(Esc_LeadIn$StockID)==Stock),]
+    esc2019<-Edat[Edat$Year==2019,]
+    Edat <- Edat[-dim(Edat)[1],]
+    ylims <- c( 0 , max(c( unlist(MyUpper), na.omit(Edat$Escape) )))
+  }
+  else {
+    ylims <-  c( min(c( unlist(MyLower) )), max(c( unlist(MyUpper) )))
+  }  
+  # get escapament init data
+  Edat_Init <- Data$Escapement[which(Data$Escapement$StockID==Stock),] 
+  
+  # Plot
+  png(paste("Figures/", PlotName ,".png", sep=""), width=8, height = 8, units="in", res=500)
+  
+  for(mm in 1:length(Blobs)){
+    
+    if (mm == 1) {
+      
+      plot(Edat$Year, Edat$Escape, col="darkgrey", type="l", ylim=ylims, 
+           xlim=c(min(Edat$Year),max(Opts$Years)), ylab = "Escapement", xlab = "Year", lwd=2)
+      # now add initialization data
+      lines(Edat_Init$Year, Edat_Init$Abundance, col="black", lwd=2)
+      
+      # now add 2019 escapement
+      points(esc2019$Year,esc2019$Escape, pch=16, col="red")
+      
+      lines(Years_To_Plot, MyMed[[mm]], col=cols[mm], lwd=2.5)
+      
+      # Add tranparent error bars
+      polygon(y=c(MyLower[[mm]], rev(MyUpper[[mm]])), 
+              x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(cols[mm], 50, sep=""), border=cols[mm])
+      
+      
+    }
+    
+    
+    if (mm > 1) {
+      
+      lines(Years_To_Plot, MyMed[[mm]], col=cols[mm], lwd=2.5)
+      # Add tranparent error bars
+      polygon(y=c(MyLower[[mm]], rev(MyUpper[[mm]])), 
+              x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(cols[mm], 50, sep=""), border=cols[mm])
+    }
+    
+  } # end of loop over Blobs
+  
+  
+  
+  if(length(Blobs) >= 2){
+    legend("topright", fill=c(cols[1:(length(Blobs))]), legend=Legend_Names)
+  } # and more than one model if
+  
+  
+  dev.off()
+  
+  
+}
+
+
+
+
+
+
+
+
+
 ###########################################################
 #  EscapePlots_4
 #######################################################
@@ -422,7 +679,6 @@ EscapePlots.Quant <- function(Names, PlotName, LeadIn = T, Legend_Names=NA, nr, 
 ################################################################
 
 EscapePlots_4 <- function(Names, PlotName, alpha, Legend_Names=NA, nr, nc){
-  
   # want to extract table of median change in escapment over 10 years (2016 to 2025) and 20 years (2016 to 2035)
   # also save all blobs
   Blobs <- list()
@@ -511,7 +767,7 @@ EscapePlots_4 <- function(Names, PlotName, alpha, Legend_Names=NA, nr, nc){
       # Add tranparent error bars
       polygon(y=c(MyMean[[mm]] - MySD[[mm]], rev(MyMean[[mm]] + MySD[[mm]])), 
               x=c(Years_To_Plot, rev(Years_To_Plot)), col= paste(cols[mm], 50, sep=""), border=cols[mm])
-      mtext(side=3, text=paste0(alpha[mm],"% reduction in HM Alpha"))
+     # mtext(side=3, text=paste0(alpha[mm],"% reduction in HM Alpha"))
     }
     # label stock
     title(main=  Data$Stocks[ss],outer=TRUE,cex.main=1.5)
@@ -1433,7 +1689,7 @@ plotCatch<-function(Names, PlotName,
 # Purpose: Check number of simulation replicates needed to get stable results
 #   
 # Arguments: Names = names of scenarios to be plotted; each name must have an rds file with that name saved in DataOut folder
-#            perfMetric = must specify which performance measuree to plot; at present, two options available: EscapeChange or AveCatch
+#            perfMetric = must specify which performance measure to plot; at present, two options available: EscapeChange or AveCatch
 # Note: # --> More testing is needed to make sure this works for current set-up
 ################################################################
 checkNSims<-function(Names, perfMetric) {
@@ -1586,6 +1842,8 @@ checkNSims<-function(Names, perfMetric) {
   } # End of If perfMetric "AveCatch"
 
 }
+
+
 
 #*###########################################################
 #  Catch_4_Panel
