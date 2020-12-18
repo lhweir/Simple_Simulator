@@ -438,7 +438,8 @@ EscapePlots_Compare <- function(Names, PlotName, Stock, Legend_Names=NA){
   }
   
   #Colors -- need to plot less than 7 or not enough colors
-  cols <- c("#0000ff", "#b22222", "#7E3FCC", "#006400", "#FFC725", "#808080", "#EF29E4")
+  #cols <- c("#0000ff", "#b22222", "#7E3FCC", "#006400", "#FFC725", "#808080", "#EF29E4")
+  cols <- c("#808080", "#0000ff", "#b22222", "#7E3FCC", "#006400", "#FFC725", "#808080")
   TGrey <- "#80808050"
   
   # if legend names given, use these, otherwise use scenario names

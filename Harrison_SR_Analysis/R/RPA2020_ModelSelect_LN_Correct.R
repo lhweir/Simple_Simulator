@@ -10,7 +10,7 @@ library(ggplot2)
 library(TMB)
 library(reshape)
 library(dplyr)
-library(TMBhelper)
+#library(TMBhelper)
 
 source("Harrison_SR_Analysis/R/TMB_functions.R")
 
@@ -476,9 +476,10 @@ deriv_posteriorsrb <- data.frame(chains=rep(recrsdf$chains[recrsdf$parameters=="
                                value = c(a_avg_post$a_avg, beta_rb, sigtot, rho_rb) )
 
 # put posterior draws in wide format data frame and save
-deriv_posteriorsrb_wide<-data.frame("iteration" = 1:length(a_avg_post$a_avg), "alpha.avg" = exp(a_avg_post$a_avg),
+deriv_posteriorsrb_wide<-data.frame("iteration" = 1:length(a_avg_post$a_avg), "StockID" = rep("Harrison",length(a_avg_post$a_avg) ),
+                                    "alpha.avg" = exp(a_avg_post$a_avg),
                                      "b"=beta_rb,"sigma.tot" = sigtot, "rho"=rho_rb)
-write.csv(deriv_posteriorsrb_wide, "Harrison_SR_Analysis/DataOut/TimeVarying_SR_LN_fullPosterior.csv")
+write.csv(deriv_posteriorsrb_wide, "Harrison_SR_Analysis/DataOut/TimeVarying_LN_SR_fullPosterior.csv", row.names=F)
 
 
 pmrb <- ggplot(deriv_posteriorsrb) +

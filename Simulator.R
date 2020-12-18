@@ -59,15 +59,50 @@ nSims <- 10000
 Depensatory <- "Dep"
 P_Scenario <- "0p_12yrs"
 
-# Scenario 1: Sample from posterior estimated without LN Bias Correction; Projections with bias correction
+# Scenario 1: Sample from posterior estimated without LN Bias Correction; Projections without bias correction
 Scenario <- 1
+Run <- "DU2_postNoBC_projNoBC"
+Names[Scenario] <- paste(Scenario, Prod, Fish, P_Scenario, Run, sep="_")
+
+BlobHar <- Init.Blob(SR = Prod, Years = 2015:2031, HRS = Fish, nSims = nSims,
+                     Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario,
+                     CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
+                     LNormBias=F, samplePosterior = T, inputLNormBias=F)
+
+# Load data to blob
+BlobHar$Data <- Read.Data(BlobHar,FolderPath="DataIn")
+# Run simulations
+BlobHar$Sims <- Run.CN.MSE.Sim(BlobHar)
+# Save blob
+Save.Blob(BlobHar)
+
+# Scenario 2: Sample from posterior estimated with LN Bias Correction; Projections with bias correction
+Scenario <- 2
+Run <- "DU2_postBC_projBC"
+Names[Scenario] <- paste(Scenario, Prod, Fish, P_Scenario, Run, sep="_")
+
+BlobHar <- Init.Blob(SR = Prod, Years = 2015:2031, HRS = Fish, nSims = nSims,
+                     Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario,
+                     CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
+                     LNormBias=T, samplePosterior = T, inputLNormBias=T)
+
+# Load data to blob
+BlobHar$Data <- Read.Data(BlobHar,FolderPath="DataIn")
+# Run simulations
+BlobHar$Sims <- Run.CN.MSE.Sim(BlobHar)
+# Save blob
+Save.Blob(BlobHar)
+
+# # Scenario 3: Sample from posterior estimated without LN Bias Correction; Projections with bias correction
+ Scenario <- 3
 Run <- "DU2_postNoBC_projBC"
 Names[Scenario] <- paste(Scenario, Prod, Fish, P_Scenario, Run, sep="_")
 
 BlobHar <- Init.Blob(SR = Prod, Years = 2015:2031, HRS = Fish, nSims = nSims,
                      Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario,
                      CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
-                     LNormBias=T, samplePosterior = T)
+                     LNormBias=T, samplePosterior = T, inputLNormBias=F)
+
 
 # Load data to blob
 BlobHar$Data <- Read.Data(BlobHar,FolderPath="DataIn")
@@ -76,15 +111,17 @@ BlobHar$Sims <- Run.CN.MSE.Sim(BlobHar)
 # Save blob
 Save.Blob(BlobHar)
 
-# Scenario 2: Median estimated without LN Bias Correction; Projections without bias correction
-Scenario <- 2
+
+
+# Scenario 4: Use median estimated without LN Bias Correction; Projections without bias correction
+Scenario <- 4
 Run <- "DU2_medNoBC_projNoBC"
 Names[Scenario] <- paste(Scenario, Prod, Fish, P_Scenario, Run, sep="_")
 
 BlobHar <- Init.Blob(SR = Prod, Years = 2015:2031, HRS = Fish, nSims = nSims,
                      Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario,
                      CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
-                     LNormBias=F, samplePosterior = F)
+                     LNormBias=F, samplePosterior = F, inputLNormBias=F)
 
 # Load data to blob
 BlobHar$Data <- Read.Data(BlobHar,FolderPath="DataIn")
@@ -93,15 +130,32 @@ BlobHar$Sims <- Run.CN.MSE.Sim(BlobHar)
 # Save blob
 Save.Blob(BlobHar)
 
-# Scenario 3: Median estimated without LN Bias Correction; Projections with bias correction
-Scenario <- 3
+# Scenario 5: Use median estimated with LN Bias Correction; Projections with bias correction
+Scenario <- 5
+Run <- "DU2_medBC_projBC"
+Names[Scenario] <- paste(Scenario, Prod, Fish, P_Scenario, Run, sep="_")
+
+BlobHar <- Init.Blob(SR = Prod, Years = 2015:2031, HRS = Fish, nSims = nSims,
+                     Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario,
+                     CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
+                     LNormBias=T, samplePosterior = F, inputLNormBias=T)
+
+# Load data to blob
+BlobHar$Data <- Read.Data(BlobHar,FolderPath="DataIn")
+# Run simulations
+BlobHar$Sims <- Run.CN.MSE.Sim(BlobHar)
+# Save blob
+Save.Blob(BlobHar)
+
+# # Scenario 6: Use medians estimated without LN Bias Correction; Projections with bias correction
+Scenario <- 6
 Run <- "DU2_medNoBC_projBC"
 Names[Scenario] <- paste(Scenario, Prod, Fish, P_Scenario, Run, sep="_")
 
 BlobHar <- Init.Blob(SR = Prod, Years = 2015:2031, HRS = Fish, nSims = nSims,
                      Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario,
                      CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
-                     LNormBias=T, samplePosterior = F)
+                     LNormBias=T, samplePosterior = F, inputLNormBias=F)
 
 
 # Load data to blob
@@ -113,13 +167,19 @@ Save.Blob(BlobHar)
 
 
 
-# Compare two scenarios
-EscapePlotsPercentiles_Compare(c(Names[1],Names[3]), PlotName="Harrison - Bias correction comparison - percentiles", Stock = "Harrison", Legend_Names = c("PostNoBC_projBC", "MedNoBC_projBC"))
-EscapePlots_Compare(c(Names[1],Names[3]), PlotName="Harrison - Bias correction comparison", Stock = "Harrison", Legend_Names = c("PostNoBC_projBC", "MedNoBC_projBC"))
 
+# Compare scenarios
+EscapePlotsPercentiles_Compare(c(Names[3],Names[2], Names[1]), PlotName="Harrison - Bias correction comparison - posterior - percent", 
+                               Stock = "Harrison", Legend_Names = c("PostNoBC_projBC", "PostBC_projBC","PostNoBC_projNoBC"))
+EscapePlots_Compare(c(Names[3],Names[2],Names[1]), PlotName="Harrison - Bias correction comparison - posterior", 
+                    Stock = "Harrison", Legend_Names = c("PostNoBC_projBC", "PostBC_projBC","PostNoBC_projNoBC"))
 
+EscapePlotsPercentiles_Compare(c(Names[6],Names[5], Names[4]), PlotName="Harrison - Bias correction comparison - median - percent", 
+                               Stock = "Harrison", Legend_Names = c("MedNoBC_projBC", "MedBC_projBC","MedNoBC_projNoBC"))
+EscapePlots_Compare(c(Names[6],Names[5],Names[4]), PlotName="Harrison - Bias correction comparison - median", 
+                    Stock = "Harrison", Legend_Names = c("MedNoBC_projBC", "MedBC_projBC","MedNoBC_projNoBC"))
 
-checkNSims (Names, perfMetric = "EscapeChange") 
+#checkNSims (Names, perfMetric = "EscapeChange") 
 
 # End of temporary code for posterior method  ===========================================
 

@@ -37,7 +37,7 @@
 # Initialize simulation run with options
 Init.Blob <- function(Name, SR, BM, Initialization, Years, HRS, EV_Type, nSims, Prod_Scenario,
                        CC_Scenario,  Smolts_Scenario, Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, 
-                       AutoCorr, LNormBias, samplePosterior=F) {
+                       AutoCorr, LNormBias, samplePosterior=F, inputLNormBias=F) {
   Blob <- list()
   Blob$Options <- list()
   # Add options
@@ -58,6 +58,7 @@ Init.Blob <- function(Name, SR, BM, Initialization, Years, HRS, EV_Type, nSims, 
   Blob$Options$AutoCorr <- AutoCorr
   Blob$Options$LNormBias <- LNormBias
   Blob$Options$samplePosterior <- samplePosterior
+  Blob$Options$inputLNormBias <- inputLNormBias
   Blob
 }
 
@@ -103,7 +104,11 @@ Read.Data <- function(Blob, FolderPath="DataIn"){
   SR_Dat <- SR_File[SR_File$Reduction == Blob$Options$SR, ]}
 
   if(Data$Stocks == "Harrison") {
-      SR_Dat <- read.csv(paste(FolderPath, "/SR_Params/", Blob$Options$SR, "_SR.csv", sep=""))
+    if (Blob$Options$inputLNormBias == TRUE) {
+        SR_Dat <- read.csv(paste(FolderPath, "/SR_Params/", Blob$Options$SR, "_LN_SR.csv", sep="")) }
+    else {
+        SR_Dat <- read.csv(paste(FolderPath, "/SR_Params/", Blob$Options$SR, "_SR.csv", sep=""))
+    }
   }
   
   BM_Dat <- read.csv(paste(FolderPath, "/Benchmarks/", Blob$Options$BM, "_BM.csv", sep=""))
@@ -118,7 +123,12 @@ Read.Data <- function(Blob, FolderPath="DataIn"){
 
   # Add joint posterior from SR estimation if full posterior is required
   if (Blob$Options$samplePosterior == TRUE) {
-    Data$SR_Post <- read.csv(paste(FolderPath, "/SR_Params/", Blob$Options$SR, "_SR_fullPosterior.csv", sep=""))
+    if (Blob$Options$inputLNormBias == TRUE) {
+      Data$SR_Post <- read.csv(paste(FolderPath, "/SR_Params/", Blob$Options$SR, "_LN_SR_fullPosterior.csv", sep=""))
+    }
+    else {
+      Data$SR_Post <- read.csv(paste(FolderPath, "/SR_Params/", Blob$Options$SR, "_SR_fullPosterior.csv", sep=""))
+    }
   }
   
   # Now read in multipliers for productivity/CC scenario and create data frame
