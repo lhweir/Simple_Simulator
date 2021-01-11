@@ -67,7 +67,7 @@ Names[Scenario] <- paste(Scenario, Prod, Fish, P_Scenario, Run, sep="_")
 BlobHar <- Init.Blob(SR = Prod, Years = 2015:2031, HRS = Fish, nSims = nSims,
                      Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario,
                      CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
-                     LNormBias=F, samplePosterior = T, inputLNormBias=F)
+                     projectLNormBias=F, samplePosterior = T, inputLNormBias=F)
 
 # Load data to blob
 BlobHar$Data <- Read.Data(BlobHar,FolderPath="DataIn")
@@ -84,7 +84,7 @@ Names[Scenario] <- paste(Scenario, Prod, Fish, P_Scenario, Run, sep="_")
 BlobHar <- Init.Blob(SR = Prod, Years = 2015:2031, HRS = Fish, nSims = nSims,
                      Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario,
                      CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
-                     LNormBias=T, samplePosterior = T, inputLNormBias=T)
+                     projectLNormBias=T, samplePosterior = T, inputLNormBias=T)
 
 # Load data to blob
 BlobHar$Data <- Read.Data(BlobHar,FolderPath="DataIn")
@@ -101,7 +101,7 @@ Names[Scenario] <- paste(Scenario, Prod, Fish, P_Scenario, Run, sep="_")
 BlobHar <- Init.Blob(SR = Prod, Years = 2015:2031, HRS = Fish, nSims = nSims,
                      Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario,
                      CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
-                     LNormBias=T, samplePosterior = T, inputLNormBias=F)
+                     projectLNormBias=T, samplePosterior = T, inputLNormBias=F)
 
 
 # Load data to blob
@@ -121,7 +121,7 @@ Names[Scenario] <- paste(Scenario, Prod, Fish, P_Scenario, Run, sep="_")
 BlobHar <- Init.Blob(SR = Prod, Years = 2015:2031, HRS = Fish, nSims = nSims,
                      Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario,
                      CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
-                     LNormBias=F, samplePosterior = F, inputLNormBias=F)
+                     projectLNormBias=F, samplePosterior = F, inputLNormBias=F)
 
 # Load data to blob
 BlobHar$Data <- Read.Data(BlobHar,FolderPath="DataIn")
@@ -138,7 +138,7 @@ Names[Scenario] <- paste(Scenario, Prod, Fish, P_Scenario, Run, sep="_")
 BlobHar <- Init.Blob(SR = Prod, Years = 2015:2031, HRS = Fish, nSims = nSims,
                      Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario,
                      CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
-                     LNormBias=T, samplePosterior = F, inputLNormBias=T)
+                     projectLNormBias=T, samplePosterior = F, inputLNormBias=T)
 
 # Load data to blob
 BlobHar$Data <- Read.Data(BlobHar,FolderPath="DataIn")
@@ -155,7 +155,7 @@ Names[Scenario] <- paste(Scenario, Prod, Fish, P_Scenario, Run, sep="_")
 BlobHar <- Init.Blob(SR = Prod, Years = 2015:2031, HRS = Fish, nSims = nSims,
                      Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario,
                      CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
-                     LNormBias=T, samplePosterior = F, inputLNormBias=F)
+                     projectLNormBias=T, samplePosterior = F, inputLNormBias=F)
 
 
 # Load data to blob
@@ -211,7 +211,7 @@ for(i in 1:length(Prod)){
       BlobHar <- Init.Blob(SR = Prod[i], Years = 2015:2031, HRS = Fish[j], nSims = nSims,
                           Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario[p],
                           CC_Scenario = 1, Smolts_Scenario = 1 ,  Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, AutoCorr=F,
-                          LNormBias=T, samplePosterior = T)
+                          projectLNormBias=T, samplePosterior = T,inputLNormBias=T)
     
       # BlobHar <- Init.Blob(SR = Prod[i], Years = 2015:2031, HRS = Fish[j], nSims = nSims,
       #                      Name=Names[Scenario],  BM="WSP", Initialization ="Escapement", EV_Type="1", Prod_Scenario = P_Scenario[p],

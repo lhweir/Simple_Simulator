@@ -31,13 +31,14 @@
 #           Depensatory_Effects = If TRUE, depensatory effects are included
 #           BigBar = If Big Bar = 1, then effects from Big Bar are included
 #           AutoCorr = If TRUE, depensatory effects are included
-#           LNormBias = If Big Bar = 1, then effects from Big Bar are included
+#           projectLNormBias = If TRUE, a lognormal bias correction is applied to projected recruitment 
+#           inputLNormBias = If TRUE, the SR parameters input from csv file were estimated using a lognormal bias correction factor
 ###########################################
 
 # Initialize simulation run with options
 Init.Blob <- function(Name, SR, BM, Initialization, Years, HRS, EV_Type, nSims, Prod_Scenario,
                        CC_Scenario,  Smolts_Scenario, Exclude_Jacks=T, Depensatory_Effects=F, BigBar=0, 
-                       AutoCorr, LNormBias, samplePosterior=F, inputLNormBias=F) {
+                       AutoCorr, projectLNormBias, samplePosterior=F, inputLNormBias=F) {
   Blob <- list()
   Blob$Options <- list()
   # Add options
@@ -56,7 +57,7 @@ Init.Blob <- function(Name, SR, BM, Initialization, Years, HRS, EV_Type, nSims, 
   Blob$Options$Depensatory_Effects <- Depensatory_Effects
   Blob$Options$BigBar <- BigBar
   Blob$Options$AutoCorr <- AutoCorr
-  Blob$Options$LNormBias <- LNormBias
+  Blob$Options$LNormBias <- projectLNormBias
   Blob$Options$samplePosterior <- samplePosterior
   Blob$Options$inputLNormBias <- inputLNormBias
   Blob
