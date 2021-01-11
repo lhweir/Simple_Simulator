@@ -19,6 +19,7 @@
 # AI_4_Panel()                - plots AABM abundance index (AI) over time, across scenarios
 # Escape_ByFishing            - Plots escapement trajectories for the 2 productivity values and depensatory effects by each fishing scenario
 # Escape_4_Panel_2            - Plots escapement trajectories for the 2 productivity values and depensatory effects
+# plotSimVar_GenAveEscpe      - Plots distribution and CV of 4-year geometric mean escapement in the final generation as a function of number of simulation replicates
 # ==================================================================================================
 
 
@@ -2488,3 +2489,62 @@ Escape_ByFishing <- function(Names, Esc_LeadIn, Fishery = c("Current", "50% Curr
   } # End stocks loop 
 } # End Escape_4_Panel_2 function
 
+
+# ####################################################
+# plotSimVar_GenAveEscpe()
+# ##############################################################
+# Purpose: - Helps assess simulation stabilization by plotting the distribution and CV of 4-year geometric mean 
+#          escapement in the final generation as a function of number of simulation replicates
+# Added by: K.Holt, Jan 11, 2021 to test stabilization when using MCMC sampling of posterior
+#################################################################
+
+plotSimVar_GenAveEscpe<-function(scenarioName, maxSims, plotName) {
+ 
+  Blob <- readRDS(paste("DataOut/", scenarioName, ".rds", sep=""))
+  Escape <- Blob$Sims$Escape
+  Opts <- Blob$Options
+  Data <- Blob$Data
+  
+  # make a list of nSim values to test 
+  #simList<-c(seq(50,500,by=50),seq(600,1000,by=100),seq(2000,10000,by=1000))
+  simList<-seq(200,10000,by=200)
+  #simList<-seq(100,1000,by=100)
+  # get years used to calculate most recent generational average
+  genYrs<-(length(Opts$Years)-3):length(Opts$Years)
+  
+  gm_mean = function(x, na.rm=TRUE){
+    exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))
+  }
+  
+  for (i in 1:length(simList)) {
+    
+    testSims<-simList[i]
+    
+    StockDat <- lapply(Escape, "[", ,1, )  # Index 1 is for stock 1; assumes only one stock in projections
+    nSimsDat <- lapply(1:testSims, function(x) apply(StockDat[[x]], 1, sum) )
+    
+    genAve<-rep(NA,length(nSimsDat))
+    for(j in 1:length(nSimsDat)) {
+      genAve[j]<-gm_mean(nSimsDat[[j]][genYrs])
+    }
+    
+    dum<-data.frame(nSims=testSims, genAveEscp=genAve)
+    if (i == 1) testSimsOut<-dum
+    if (i >1) testSimsOut<-rbind(testSimsOut,dum)
+    
+  }
+
+  pdf(paste("Figures/",plotName,".pdf", sep=""))
+  
+  par(mfrow=c(2,1))
+  
+  boxplot(testSimsOut$genAveEscp~testSimsOut$nSims,ylim=c(0,200000),
+          ylab="Final Generational Escp", xlab="Number of Replicates")
+  
+  testSimsOut<-as_tibble(testSimsOut)
+  cv<- testSimsOut %>% group_by(nSims) %>% summarize(cv=sd(genAveEscp)/mean(genAveEscp))
+  plot(cv$nSims,cv$cv, typ="l",ylab="CV of Final Generational Escp", xlab="Number of Replicates")
+  
+  dev.off()
+  
+}

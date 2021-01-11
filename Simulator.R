@@ -179,7 +179,10 @@ EscapePlotsPercentiles_Compare(c(Names[6],Names[5], Names[4]), PlotName="Harriso
 EscapePlots_Compare(c(Names[6],Names[5],Names[4]), PlotName="Harrison - Bias correction comparison - median", 
                     Stock = "Harrison", Legend_Names = c("MedNoBC_projBC", "MedBC_projBC","MedNoBC_projNoBC"))
 
-#checkNSims (Names, perfMetric = "EscapeChange") 
+
+# Check simulation stabilization of the 4-year geometric mean escapement in the last projected generation
+plotSimVar_GenAveEscpe(Names[2], maxSims=nSims, plotName="testStabilization_GenMeanEsc")
+
 
 # End of temporary code for posterior method  ===========================================
 
